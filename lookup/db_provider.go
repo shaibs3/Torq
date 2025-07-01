@@ -1,5 +1,5 @@
 package lookup
 
-type LookupProvider interface {
+type DbProvider interface {
 	Lookup(ip string) (city string, country string, err error)
 }

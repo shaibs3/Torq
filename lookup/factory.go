@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewProvider(backend string, logger *zap.Logger) (LookupProvider, error) {
+func GetDbProvider(backend string, logger *zap.Logger) (DbProvider, error) {
 	path := os.Getenv("IP_DB_PATH")
 	// Todo remove this env variable
 

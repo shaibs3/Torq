@@ -1,4 +1,4 @@
-package country_finder
+package finder
 
 import (
 	"encoding/json"
@@ -6,15 +6,15 @@ import (
 	"torq/lookup"
 )
 
-type CountryFinder struct {
-	provider lookup.LookupProvider
+type IpFinder struct {
+	provider lookup.DbProvider
 }
 
-func NewCountryFinder(provider lookup.LookupProvider) *CountryFinder {
-	return &CountryFinder{provider: provider}
+func NewCountryFinder(provider lookup.DbProvider) *IpFinder {
+	return &IpFinder{provider: provider}
 }
 
-func (cf *CountryFinder) FindCountryHandler(w http.ResponseWriter, r *http.Request) {
+func (cf *IpFinder) FindCountryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	ip := r.URL.Query().Get("ip")
 	if ip == "" {

@@ -26,7 +26,7 @@ all: clean deps test build
 build:
 	@echo "Building..."
 	@mkdir -p $(BINARY_DIR)
-	$(GOBUILD) -o $(BINARY_DIR) -v ./...
+	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./main.go
 
 ## Clean build artifacts
 clean:
@@ -98,7 +98,7 @@ build-linux:
 ## Docker build
 docker-build:
 	@echo "Building Docker image..."
-	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+	docker build --build-arg PORT=$(PORT) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 ## Docker run
 docker-run:

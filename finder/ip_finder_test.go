@@ -1,4 +1,4 @@
-package country_finder
+package finder
 
 import (
 	"errors"
