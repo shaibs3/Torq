@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func createTempCSV(t *testing.T, content string) string {
@@ -19,6 +20,8 @@ func createTempCSV(t *testing.T, content string) string {
 }
 
 func TestNewCSVProvider_ValidFile(t *testing.T) {
+	logger := zap.NewNop() // Use no-op logger for tests
+
 	csvContent := "1.2.3.4,New York,USA\n5.6.7.8,London,UK\n"
 	path := createTempCSV(t, csvContent)
 	defer func(name string) {
@@ -28,7 +31,7 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 		}
 	}(path)
 
-	provider, err := NewCSVProvider(path)
+	provider, err := NewCSVProvider(path, logger)
 	require.NoError(t, err)
 
 	city, country, err := provider.Lookup("1.2.3.4")
@@ -38,16 +41,20 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 }
 
 func TestNewCSVProvider_InvalidFile(t *testing.T) {
-	_, err := NewCSVProvider("nonexistent.csv")
+	logger := zap.NewNop() // Use no-op logger for tests
+
+	_, err := NewCSVProvider("nonexistent.csv", logger)
 	assert.Error(t, err)
 }
 
 func TestCSVProvider_Lookup_NotFound(t *testing.T) {
+	logger := zap.NewNop() // Use no-op logger for tests
+
 	csvContent := "1.2.3.4,New York,USA\n"
 	path := createTempCSV(t, csvContent)
 	defer os.Remove(path) //nolint:errcheck
 
-	provider, err := NewCSVProvider(path)
+	provider, err := NewCSVProvider(path, logger)
 	require.NoError(t, err)
 
 	_, _, err = provider.Lookup("8.8.8.8")

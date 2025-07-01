@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -11,10 +10,21 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
+
+var logger *zap.Logger
 
 func init() {
 	_ = godotenv.Load()
+
+	// Initialize zap logger
+	var err error
+	logger, err = zap.NewProduction()
+	if err != nil {
+		panic("failed to initialize logger: " + err.Error())
+	}
+	defer logger.Sync()
 }
 
 // HealthResponse represents the health check response
@@ -37,8 +47,14 @@ func livenessHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewEncoder(w).Encode(response)
 	if err != nil {
+		logger.Error("failed to encode liveness response", zap.Error(err))
 		return
 	}
+
+	logger.Info("liveness check completed",
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+		zap.String("remote_addr", r.RemoteAddr))
 }
 
 // readinessHandler checks if the service is ready to serve requests
@@ -51,6 +67,7 @@ func readinessHandler(w http.ResponseWriter, r *http.Request) {
 	status := "ready"
 	if backend == "" {
 		status = "not ready"
+		logger.Warn("service not ready - missing IP_DB_PROVIDER configuration")
 	}
 
 	response := HealthResponse{
@@ -61,16 +78,29 @@ func readinessHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewEncoder(w).Encode(response)
 	if err != nil {
+		logger.Error("failed to encode readiness response", zap.Error(err))
 		return
 	}
+
+	logger.Info("readiness check completed",
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+		zap.String("status", status),
+		zap.String("remote_addr", r.RemoteAddr))
 }
 
 func main() {
 	backend := os.Getenv("IP_DB_PROVIDER")
-	provider, err := lookup.NewProvider(backend)
+	logger.Info("initializing service", zap.String("backend", backend))
+
+	// Create a named logger for the lookup provider
+	lookupLogger := logger.Named("lookup")
+	provider, err := lookup.NewProvider(backend, lookupLogger)
 	if err != nil {
-		log.Fatalf("failed to init provider: %v", err)
+		logger.Fatal("failed to init provider", zap.Error(err), zap.String("backend", backend))
 	}
+
+	logger.Info("provider initialized successfully", zap.String("backend", backend))
 
 	CountryFinder := country_finder.NewCountryFinder(provider)
 	router := mux.NewRouter()
@@ -83,6 +113,7 @@ func main() {
 	router.HandleFunc("/v1/find-country", CountryFinder.FindCountryHandler).Methods("GET")
 
 	port := ":8080"
+	logger.Info("starting server", zap.String("port", port))
 
 	srv := &http.Server{
 		Addr:         port,
@@ -91,6 +122,15 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
-	log.Printf("Server is running on port %s", port)
-	log.Fatal(srv.ListenAndServe())
+
+	logger.Info("server configuration",
+		zap.String("addr", srv.Addr),
+		zap.Duration("read_timeout", srv.ReadTimeout),
+		zap.Duration("write_timeout", srv.WriteTimeout),
+		zap.Duration("idle_timeout", srv.IdleTimeout))
+
+	logger.Info("server is running", zap.String("port", port))
+	if err := srv.ListenAndServe(); err != nil {
+		logger.Fatal("server failed to start", zap.Error(err))
+	}
 }
