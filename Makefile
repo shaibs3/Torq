@@ -26,7 +26,7 @@ all: clean deps test build
 build:
 	@echo "Building..."
 	@mkdir -p $(BINARY_DIR)
-	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./...
+	$(GOBUILD) -o $(BINARY_DIR) -v ./...
 
 ## Clean build artifacts
 clean:
@@ -38,8 +38,8 @@ clean:
 ## Run the application
 run:
 	@echo "Running..."
-	$(GOBUILD) -o $(BINARY_NAME) -v ./...
-	./$(BINARY_NAME)
+	$(GOBUILD) -o $(BINARY_DIR) -v ./...
+	./$(BINARY_DIR)/$(BINARY_NAME)
 
 ## Run the application with hot reload (requires air)
 dev:
