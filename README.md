@@ -100,20 +100,50 @@ curl "http://localhost:8080/v1/find-country?ip=90.91.92.93"
 }
 ```
 
-### Health Check
+### Health Check Endpoints
 
-**Endpoint:** `GET /health`
+#### Liveness Probe
+
+**Endpoint:** `GET /health/live`
 
 **Example Request:**
 ```bash
-curl "http://localhost:8080/health"
+curl "http://localhost:8080/health/live"
 ```
 
 **Example Response:**
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00Z"
+  "status": "alive",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "service": "torq"
+}
+```
+
+#### Readiness Probe
+
+**Endpoint:** `GET /health/ready`
+
+**Example Request:**
+```bash
+curl "http://localhost:8080/health/ready"
+```
+
+**Example Response:**
+```json
+{
+  "status": "ready",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "service": "torq"
+}
+```
+
+**Not Ready Response (still returns 200):**
+```json
+{
+  "status": "not ready",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "service": "torq"
 }
 ```
 
@@ -214,8 +244,9 @@ curl "http://localhost:8080/v1/find-country?ip=8.8.8.8"
 # Test with invalid IP
 curl "http://localhost:8080/v1/find-country?ip=invalid"
 
-# Test health endpoint
-curl "http://localhost:8080/health"
+# Test health endpoints
+curl "http://localhost:8080/health/live"
+curl "http://localhost:8080/health/ready"
 ```
 
 ## Deployment
@@ -259,10 +290,16 @@ spec:
           value: "maxmind"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /health/live
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
 ```
 
 ## Contributing
