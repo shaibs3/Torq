@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 	country_finder "torq/CountryFinder"
+	"torq/limiter"
 	"torq/lookup"
 
 	"github.com/gorilla/mux"
@@ -18,23 +20,25 @@ var logger *zap.Logger
 func init() {
 	_ = godotenv.Load()
 
-	// Initialize zap logger
 	var err error
 	logger, err = zap.NewProduction()
 	if err != nil {
 		panic("failed to initialize logger: " + err.Error())
 	}
-	defer logger.Sync()
+	defer func(logger *zap.Logger) {
+		err := logger.Sync()
+		if err != nil {
+			panic("failed to sync logger: " + err.Error())
+		}
+	}(logger)
 }
 
-// HealthResponse represents the health check response
 type HealthResponse struct {
 	Status    string    `json:"status"`
 	Timestamp time.Time `json:"timestamp"`
 	Service   string    `json:"service"`
 }
 
-// livenessHandler checks if the service is alive
 func livenessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -57,12 +61,10 @@ func livenessHandler(w http.ResponseWriter, r *http.Request) {
 		zap.String("remote_addr", r.RemoteAddr))
 }
 
-// readinessHandler checks if the service is ready to serve requests
 func readinessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	// Check if the provider is properly initialized
 	backend := os.Getenv("IP_DB_PROVIDER")
 	status := "ready"
 	if backend == "" {
@@ -89,11 +91,21 @@ func readinessHandler(w http.ResponseWriter, r *http.Request) {
 		zap.String("remote_addr", r.RemoteAddr))
 }
 
+// RateLimitMiddleware wraps handlers with the rate limiter
+func RateLimitMiddleware(l *limiter.RpsRateLimiter, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !l.Allow() {
+			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	backend := os.Getenv("IP_DB_PROVIDER")
 	logger.Info("initializing service", zap.String("backend", backend))
 
-	// Create a named logger for the lookup provider
 	lookupLogger := logger.Named("lookup")
 	provider, err := lookup.NewProvider(backend, lookupLogger)
 	if err != nil {
@@ -112,12 +124,25 @@ func main() {
 	// API endpoints
 	router.HandleFunc("/v1/find-country", CountryFinder.FindCountryHandler).Methods("GET")
 
+	// Create and apply rate limiter middleware (e.g., 10 requests per second)
+	rpsLimitStr := os.Getenv("RPS_LIMIT")
+	rpsLimit := 10 // default RPS limit
+	if rpsLimitStr != "" {
+		if val, err := strconv.Atoi(rpsLimitStr); err == nil && val > 0 {
+			rpsLimit = val
+		} else {
+			logger.Warn("invalid RPS_LIMIT, using default", zap.String("RPS_LIMIT", rpsLimitStr))
+		}
+	}
+	rl := limiter.NewRateLimiter(rpsLimit, logger)
+	rateLimitedRouter := RateLimitMiddleware(rl, router)
+
 	port := ":8080"
 	logger.Info("starting server", zap.String("port", port))
 
 	srv := &http.Server{
 		Addr:         port,
-		Handler:      router,
+		Handler:      rateLimitedRouter,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
