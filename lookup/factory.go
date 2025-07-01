@@ -5,9 +5,9 @@ import (
 	"os"
 )
 
-func NewProvider() (LookupProvider, error) {
-	backend := os.Getenv("IP_DB_PROVIDER")
+func NewProvider(backend string) (LookupProvider, error) {
 	path := os.Getenv("IP_DB_PATH")
+	// Todo remove this env variable
 
 	switch backend {
 	case "csv":
