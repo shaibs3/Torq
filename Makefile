@@ -134,7 +134,7 @@ security:
 		gosec ./...; \
 	else \
 		echo "gosec not found. Installing..."; \
-		curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.19.0; \
+		go install github.com/securego/gosec/v2/cmd/gosec@latest; \
 		gosec ./...; \
 	fi
 
