@@ -18,7 +18,7 @@ type record struct {
 }
 
 func NewCSVProvider(path string) (*CSVProvider, error) {
-	file, err := os.Open(path) //nolint:gosec
+	file, err := os.Open(path) // #nosec G304
 	if err != nil {
 		return nil, fmt.Errorf("failed to open CSV file: %w", err)
 	}
