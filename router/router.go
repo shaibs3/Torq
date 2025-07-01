@@ -36,7 +36,7 @@ func (r *Router) SetupRoutes(countryFinder *finder.IpFinder) {
 	r.router.HandleFunc("/health/ready", service_health.ReadinessHandler(r.logger)).Methods("GET")
 
 	// API endpoints
-	r.router.HandleFunc("/v1/find-country", countryFinder.FindCountryHandler).Methods("GET")
+	r.router.HandleFunc("/v1/find-country", countryFinder.FindIpHandler).Methods("GET")
 
 	r.logger.Info("routes configured successfully")
 }

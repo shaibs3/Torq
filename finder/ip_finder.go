@@ -10,11 +10,11 @@ type IpFinder struct {
 	provider lookup.DbProvider
 }
 
-func NewCountryFinder(provider lookup.DbProvider) *IpFinder {
+func NewIpFinder(provider lookup.DbProvider) *IpFinder {
 	return &IpFinder{provider: provider}
 }
 
-func (cf *IpFinder) FindCountryHandler(w http.ResponseWriter, r *http.Request) {
+func (cf *IpFinder) FindIpHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	ip := r.URL.Query().Get("ip")
 	if ip == "" {

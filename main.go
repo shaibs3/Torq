@@ -37,7 +37,7 @@ func main() {
 	logger.Info("provider initialized", zap.String("provider_type", providerType))
 
 	// Init country finder
-	countryFinder := finder.NewCountryFinder(dbProvider)
+	countryFinder := finder.NewIpFinder(dbProvider)
 
 	// Init router
 	appRouter := router.NewRouter(logger)
