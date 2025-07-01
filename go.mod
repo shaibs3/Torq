@@ -1,6 +1,6 @@
-module torq
+module github.com/shaibs3/Torq
 
-go 1.21
+go 1.24.2
 
 require (
 	github.com/gorilla/mux v1.8.1

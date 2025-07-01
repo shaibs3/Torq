@@ -2,8 +2,8 @@ package finder
 
 import (
 	"encoding/json"
+	"github.com/shaibs3/Torq/lookup"
 	"net/http"
-	"torq/lookup"
 )
 
 type IpFinder struct {

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/shaibs3/Torq/finder"
+	"github.com/shaibs3/Torq/lookup"
+	"github.com/shaibs3/Torq/router"
 	"os"
-	"torq/finder"
-	"torq/lookup"
-	"torq/router"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
