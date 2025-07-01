@@ -63,7 +63,7 @@ jobs:
         go build -o bin/torq -v ./...
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: torq-binary
         path: bin/torq
@@ -131,7 +131,7 @@ jobs:
       run: docker build -t ${{ env.DOCKER_IMAGE }}:latest .
 
     - name: Upload Docker image
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: docker-image
         path: |
