@@ -263,6 +263,18 @@ curl "http://localhost:8080/health/ready"
    docker run -p 8080:8080 -e IP_DB_PROVIDER=maxmind torq:latest
    ```
 
+3. **Check container health**
+   ```bash
+   # Check health status
+   docker ps
+   
+   # View health check logs
+   docker inspect --format='{{json .State.Health}}' <container_id>
+   
+   # Run health check manually
+   docker exec <container_id> ./healthcheck.sh
+   ```
+
 ### Kubernetes Deployment
 
 ```yaml
