@@ -22,7 +22,8 @@ func NewCSVProvider(path string) (*CSVProvider, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open CSV file: %w", err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
+
 
 	reader := csv.NewReader(file)
 	rows, err := reader.ReadAll()

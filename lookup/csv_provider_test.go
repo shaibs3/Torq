@@ -21,7 +21,12 @@ func createTempCSV(t *testing.T, content string) string {
 func TestNewCSVProvider_ValidFile(t *testing.T) {
 	csvContent := "1.2.3.4,New York,USA\n5.6.7.8,London,UK\n"
 	path := createTempCSV(t, csvContent)
-	defer os.Remove(path)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			t.Fatalf("failed to remove temp file: %v", err)
+		}
+	}(path)
 
 	provider, err := NewCSVProvider(path)
 	require.NoError(t, err)
@@ -40,7 +45,7 @@ func TestNewCSVProvider_InvalidFile(t *testing.T) {
 func TestCSVProvider_Lookup_NotFound(t *testing.T) {
 	csvContent := "1.2.3.4,New York,USA\n"
 	path := createTempCSV(t, csvContent)
-	defer os.Remove(path)
+	defer os.Remove(path) //nolint:errcheck
 
 	provider, err := NewCSVProvider(path)
 	require.NoError(t, err)

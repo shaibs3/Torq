@@ -34,5 +34,5 @@ func (cf *CountryFinder) FindCountryHandler(w http.ResponseWriter, r *http.Reque
 	}
 	jsonResp, _ := json.Marshal(resp)
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResp)
+	_, _ = w.Write(jsonResp)
 }
