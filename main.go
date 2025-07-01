@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 	country_finder "torq/CountryFinder"
 	"torq/lookup"
 
@@ -27,5 +28,14 @@ func main() {
 
 	port := ":8080"
 	log.Printf("Server is running on port %s", port)
-	log.Fatal(http.ListenAndServe(port, router))
+
+	srv := &http.Server{
+		Addr:         port,
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	log.Printf("Server is running on port %s", port)
+	log.Fatal(srv.ListenAndServe())
 }

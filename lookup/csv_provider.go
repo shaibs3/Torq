@@ -18,12 +18,11 @@ type record struct {
 }
 
 func NewCSVProvider(path string) (*CSVProvider, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to open CSV file: %w", err)
 	}
 	defer file.Close() //nolint:errcheck
-
 
 	reader := csv.NewReader(file)
 	rows, err := reader.ReadAll()
