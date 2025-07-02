@@ -2,7 +2,7 @@ package finder
 
 import (
 	"encoding/json"
-	"github.com/shaibs3/Torq/lookup"
+	"github.com/shaibs3/Torq/internal/lookup"
 	"net/http"
 )
 

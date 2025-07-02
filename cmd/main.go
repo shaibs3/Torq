@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/shaibs3/Torq/finder"
-	"github.com/shaibs3/Torq/lookup"
-	"github.com/shaibs3/Torq/router"
+	"github.com/shaibs3/Torq/internal/finder"
+	"github.com/shaibs3/Torq/internal/lookup"
+	"github.com/shaibs3/Torq/internal/router"
 	"os"
 
 	"github.com/joho/godotenv"

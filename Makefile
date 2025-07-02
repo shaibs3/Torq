@@ -26,7 +26,7 @@ all: clean deps test build
 build:
 	@echo "Building..."
 	@mkdir -p $(BINARY_DIR)
-	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./main.go
+	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
 
 ## Clean build artifacts
 clean:

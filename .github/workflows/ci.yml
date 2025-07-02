@@ -60,7 +60,7 @@ jobs:
     - name: Build application
       run: |
         mkdir -p bin
-        go build -o bin/torq -v ./main.go
+        go build -o bin/torq -v ./cmd/main.go
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

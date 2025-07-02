@@ -40,7 +40,7 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 4. **Run the application**
    ```bash
    # Using Go directly
-   go run main.go
+   go run cmd/main.go
 
    # Or using Make
    make run

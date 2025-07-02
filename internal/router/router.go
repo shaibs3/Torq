@@ -1,9 +1,9 @@
 package router
 
 import (
-	"github.com/shaibs3/Torq/finder"
-	"github.com/shaibs3/Torq/limiter"
-	"github.com/shaibs3/Torq/service_health"
+	"github.com/shaibs3/Torq/internal/finder"
+	"github.com/shaibs3/Torq/internal/limiter"
+	"github.com/shaibs3/Torq/internal/service_health"
 	"net/http"
 	"strconv"
 	"time"
