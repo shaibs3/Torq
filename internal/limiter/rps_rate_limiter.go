@@ -37,7 +37,6 @@ func (l *RpsRateLimiter) Allow() bool {
 	now := l.timeProvider()
 
 	if now.Sub(l.lastReset) >= time.Second {
-		l.logger.Debug("Resetting rate limiter", zap.Time("time", now))
 		l.lastReset = now
 		l.count = 0
 	}
@@ -48,6 +47,5 @@ func (l *RpsRateLimiter) Allow() bool {
 	}
 
 	l.count++
-	l.logger.Debug("Request allowed", zap.Int("count", l.count))
 	return true
 }
