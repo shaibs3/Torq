@@ -2,59 +2,90 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
+	"github.com/shaibs3/Torq/internal/finder"
+	"github.com/shaibs3/Torq/internal/lookup"
+	"github.com/shaibs3/Torq/internal/router"
+
+	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
 
-func InitOpenTelemetryMetrics() func(context.Context) error {
-	exporter, err := prometheus.New()
+func main() {
+	// Load .env if present
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("failed to initialize prometheus exporter: %v", err)
+		panic("failed to load .env file" + err.Error())
 	}
 
-	provider := metric.NewMeterProvider(
-		metric.WithReader(exporter),
-	)
-	otel.SetMeterProvider(provider)
-
-	// Expose metrics endpoint
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		log.Println("Prometheus metrics exposed at /metrics")
-		if err := http.ListenAndServe(":9464", nil); err != nil {
-			log.Printf("Metrics server error: %v", err)
-		}
+	// Initialize logger
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic("failed to initialize logger: " + err.Error())
+	}
+	defer func() {
+		_ = logger.Sync()
 	}()
 
-	return provider.Shutdown
-}
+	// Init IP DB provider
+	providerType := os.Getenv("IP_DB_PROVIDER")
+	logger.Info("initializing service", zap.String("provider_type", providerType))
 
-func main() {
+	dbProvider, err := lookup.GetDbProvider(providerType, logger.Named("db_provider"))
+	if err != nil {
+		logger.Fatal("failed to initialize provider", zap.Error(err), zap.String("provider_type", providerType))
+	}
+	logger.Info("provider initialized", zap.String("provider_type", providerType))
+
+	// Init country finder
+	ipFinder := finder.NewIpFinder(dbProvider)
+
+	// Init router
+	appRouter := router.NewRouter(logger)
+	appRouter.SetupRoutes(ipFinder)
+
+	// Rate limit config
+	rpsLimit := router.ParseRPSLimit(os.Getenv("RPS_LIMIT"), logger)
+
+	// Setup middleware
+	handler := appRouter.SetupMiddleware(rpsLimit)
+
+	// Create server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	port = ":" + port
+
+	server := appRouter.CreateServer(port, handler)
+	logger.Info("server is running", zap.String("port", port))
+
+	// Graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	shutdown := InitOpenTelemetryMetrics()
-	defer func() {
-		if err := shutdown(ctx); err != nil {
-			log.Printf("Error shutting down OpenTelemetry: %v", err)
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("server failed to start", zap.Error(err))
 		}
 	}()
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Torq"))
-	})
+	// Wait for interrupt signal
+	<-ctx.Done()
+	logger.Info("shutting down server...")
 
-	port := "8080"
-	log.Printf("Server listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server error: %v", err)
+	// Graceful shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server forced to shutdown", zap.Error(err))
 	}
+
+	logger.Info("server exited")
 }
