@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/shaibs3/Torq/internal/limiter"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,11 +44,11 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	ipFinder := finder.NewIpFinder(dbProvider)
 
 	// Initialize router
-	appRouter := router.NewRouter(logger)
+	appRouter := router.NewRouter(limiter.NewRateLimiter(cfg.RPSLimit, logger.Named("rate_limiter")), logger)
 	appRouter.SetupRoutes(ipFinder)
 
 	// Setup middleware with metrics
-	handler := appRouter.SetupMiddleware(cfg.RPSLimit, tel.GetHTTPMetrics())
+	handler := appRouter.SetupMiddleware(tel.GetHTTPMetrics())
 
 	// Create server
 	port := ":" + cfg.Port

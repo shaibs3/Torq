@@ -83,15 +83,17 @@ func NewHTTPMetrics(meter metric.Meter, logger *zap.Logger) *HTTPMetrics {
 
 // Router handles all routing logic and middleware setup
 type Router struct {
-	router *mux.Router
-	logger *zap.Logger
+	router      *mux.Router
+	rateLimiter limiter.RateLimiter
+	logger      *zap.Logger
 }
 
 // NewRouter creates a new router instance with all routes and middleware configured
-func NewRouter(logger *zap.Logger) *Router {
+func NewRouter(rateLimiter limiter.RateLimiter, logger *zap.Logger) *Router {
 	r := &Router{
-		router: mux.NewRouter(),
-		logger: logger.Named("router"),
+		router:      mux.NewRouter(),
+		rateLimiter: rateLimiter,
+		logger:      logger.Named("router"),
 	}
 	return r
 }
@@ -114,15 +116,14 @@ func (r *Router) SetupRoutes(countryFinder *finder.IpFinder) {
 }
 
 // SetupMiddleware configures rate limiting and metrics middleware
-func (r *Router) SetupMiddleware(rpsLimit int, metrics *HTTPMetrics) http.Handler {
-	r.logger.Info("setting up middleware", zap.Int("rps_limit", rpsLimit))
+func (r *Router) SetupMiddleware(metrics *HTTPMetrics) http.Handler {
+	r.logger.Info("setting up middleware")
 
 	// Create rate limiter
-	rl := limiter.NewRateLimiter(rpsLimit, r.logger.Named("rate_limiter"))
 
 	// Apply middlewares in order: metrics -> rate limiting -> router
 	metricsHandler := MetricsMiddleware(metrics, r.logger.Named("metrics"))(r.router)
-	rateLimitedRouter := RateLimitMiddleware(rl, metricsHandler)
+	rateLimitedRouter := RateLimitMiddleware(r.rateLimiter, metricsHandler)
 
 	r.logger.Info("middleware configured successfully")
 	return rateLimitedRouter
@@ -211,7 +212,7 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 }
 
 // RateLimitMiddleware wraps handlers with the rate limiter
-func RateLimitMiddleware(l *limiter.RpsRateLimiter, next http.Handler) http.Handler {
+func RateLimitMiddleware(l limiter.RateLimiter, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.Allow() {
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)

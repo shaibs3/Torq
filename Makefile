@@ -120,17 +120,6 @@ docker-clean:
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
 	docker rmi $(DOCKER_REPO):$(DOCKER_TAG) || true
 
-## Generate API documentation (if using swagger)
-docs:
-	@echo "Generating API documentation..."
-	@if command -v swag > /dev/null; then \
-		swag init; \
-	else \
-		echo "swag not found. Installing..."; \
-		go install github.com/swaggo/swag/cmd/swag@latest; \
-		swag init; \
-	fi
-
 ## Security scan
 security:
 	@echo "Running security scan..."
@@ -161,6 +150,5 @@ help:
 	@echo "  docker-push   - Push Docker image to Docker Hub"
 	@echo "  docker-build-push - Build and push Docker image"
 	@echo "  docker-clean  - Clean Docker images"
-	@echo "  docs          - Generate API documentation"
 	@echo "  security      - Run security scan"
 	@echo "  help          - Show this help message" 
