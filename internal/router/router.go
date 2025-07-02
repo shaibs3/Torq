@@ -101,8 +101,8 @@ func (r *Router) SetupRoutes(countryFinder *finder.IpFinder) {
 	r.logger.Info("setting up application routes")
 
 	// Health check endpoints
-	r.router.HandleFunc("/health/live", service_health.LivenessHandler(r.logger)).Methods("GET")
-	r.router.HandleFunc("/health/ready", service_health.ReadinessHandler(r.logger)).Methods("GET")
+	r.router.HandleFunc("/health/live", service_health.LivenessHandler(r.logger)).Methods("GET", "HEAD")
+	r.router.HandleFunc("/health/ready", service_health.ReadinessHandler(r.logger)).Methods("GET", "HEAD")
 
 	// Metrics endpoint
 	r.router.Handle("/metrics", promhttp.Handler()).Methods("GET")

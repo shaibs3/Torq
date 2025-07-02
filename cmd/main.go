@@ -20,10 +20,10 @@ import (
 )
 
 func main() {
-	// Load .env if present
-	err := godotenv.Load()
-	if err != nil {
-		panic("failed to load .env file" + err.Error())
+	// Load .env if present (optional)
+	if err := godotenv.Load(); err != nil {
+		// Don't panic if .env file doesn't exist, just log it
+		// This allows the app to run in containers without .env files
 	}
 
 	// Initialize logger

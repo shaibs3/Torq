@@ -19,6 +19,7 @@ FROM alpine:latest
 
 ARG PORT=8080
 ENV PORT=${PORT}
+ENV RPS_LIMIT=10
 EXPOSE ${PORT}
 
 RUN apk --no-cache add ca-certificates tzdata wget
@@ -26,13 +27,14 @@ RUN apk --no-cache add ca-certificates tzdata wget
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-WORKDIR /root/
+WORKDIR /app
 
 COPY --from=builder /app/main .
 COPY --from=builder /app/healthcheck.sh .
+COPY --from=builder /app/TestFiles ./TestFiles
 
 RUN chmod +x healthcheck.sh && \
-    chown appuser:appgroup /root/main /root/healthcheck.sh
+    chown -R appuser:appgroup /app/main /app/healthcheck.sh /app/TestFiles
 
 USER appuser
 

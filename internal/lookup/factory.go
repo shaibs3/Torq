@@ -41,6 +41,7 @@ type DbConfig struct {
 // GetDbProvider creates a database provider based on JSON configuration
 func GetDbProvider(configJSON string, logger *zap.Logger) (DbProvider, error) {
 	var config DbConfig
+	logger.Info("configJSON", zap.String("configJSON", configJSON))
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse database configuration JSON: %w", err)
 	}

@@ -38,21 +38,10 @@ clean:
 	@go clean -testcache
 
 ## Run the application
-run:build
+run:
 	@echo "Running..."
 	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
 	./$(BINARY_DIR)/$(BINARY_NAME)
-
-## Run the application with hot reload (requires air)
-dev:
-	@echo "Running in development mode..."
-	@if command -v air > /dev/null; then \
-		air; \
-	else \
-		echo "Air not found. Installing..."; \
-		go install github.com/cosmtrek/air@latest; \
-		air; \
-	fi
 
 ## Test the application
 test:
@@ -92,10 +81,6 @@ lint:
 		golangci-lint run; \
 	fi
 
-## Build for Linux
-build-linux:
-	@echo "Building for Linux..."
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_DIR)/$(BINARY_UNIX) -v ./...
 
 ## Docker build
 docker-build:
@@ -106,7 +91,9 @@ docker-build:
 ## Docker run
 docker-run:
 	@echo "Running Docker container..."
-	docker run -p $(PORT):$(PORT) --name $(BINARY_NAME) $(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker run -p $(PORT):$(PORT) --name $(BINARY_NAME) \
+		-e IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "/app/TestFiles/ip_data.csv"}}' \
+		$(DOCKER_IMAGE):$(DOCKER_TAG)
 
 ## Docker stop
 docker-stop:
@@ -168,7 +155,6 @@ help:
 	@echo "  install-deps  - Install dependencies"
 	@echo "  fmt           - Format code"
 	@echo "  lint          - Run linter"
-	@echo "  build-linux   - Build for Linux"
 	@echo "  docker-build  - Build Docker image"
 	@echo "  docker-run    - Run Docker container"
 	@echo "  docker-stop   - Stop Docker container"
