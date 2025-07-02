@@ -1,7 +1,6 @@
 package telemetry
 
 import (
-	"github.com/shaibs3/Torq/internal/router"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -10,7 +9,7 @@ import (
 
 // Telemetry handles OpenTelemetry initialization and metrics
 type Telemetry struct {
-	HTTPMetrics *router.HTTPMetrics
+	HTTPMetrics *HTTPMetrics
 	logger      *zap.Logger
 }
 
@@ -34,7 +33,7 @@ func New(logger *zap.Logger) (*Telemetry, error) {
 
 	// Initialize HTTP metrics
 	meter := otel.GetMeterProvider().Meter("torq")
-	httpMetrics := router.NewHTTPMetrics(meter, logger.Named("metrics"))
+	httpMetrics := NewHTTPMetrics(meter, logger.Named("metrics"))
 
 	return &Telemetry{
 		HTTPMetrics: httpMetrics,
@@ -43,6 +42,6 @@ func New(logger *zap.Logger) (*Telemetry, error) {
 }
 
 // GetHTTPMetrics returns the HTTP metrics instance
-func (t *Telemetry) GetHTTPMetrics() *router.HTTPMetrics {
+func (t *Telemetry) GetHTTPMetrics() *HTTPMetrics {
 	return t.HTTPMetrics
 }

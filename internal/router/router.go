@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/shaibs3/Torq/internal/telemetry"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,71 +16,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 )
-
-// HTTPMetrics holds all HTTP-related metrics
-type HTTPMetrics struct {
-	RequestDuration metric.Float64Histogram
-	RequestCount    metric.Int64Counter
-	ErrorRequests   metric.Int64Counter
-	ResponseStatus  metric.Int64Counter
-	ActiveRequests  metric.Int64UpDownCounter
-}
-
-// NewHTTPMetrics creates and registers all HTTP metrics
-func NewHTTPMetrics(meter metric.Meter, logger *zap.Logger) *HTTPMetrics {
-	requestDuration, err := meter.Float64Histogram(
-		"http_request_duration_seconds",
-		metric.WithDescription("HTTP request duration in seconds"),
-		metric.WithUnit("s"),
-	)
-	if err != nil {
-		logger.Error("failed to create request duration metric", zap.Error(err))
-	}
-
-	requestCount, err := meter.Int64Counter(
-		"http_requests_total",
-		metric.WithDescription("Total number of HTTP requests"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		logger.Error("failed to create request count metric", zap.Error(err))
-	}
-
-	errorRequests, err := meter.Int64Counter(
-		"http_error_requests_total",
-		metric.WithDescription("Total number of HTTP error requests (4xx, 5xx)"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		logger.Error("failed to create error requests metric", zap.Error(err))
-	}
-
-	responseStatus, err := meter.Int64Counter(
-		"http_response_status_total",
-		metric.WithDescription("Total number of HTTP responses by status code"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		logger.Error("failed to create response status metric", zap.Error(err))
-	}
-
-	activeRequests, err := meter.Int64UpDownCounter(
-		"http_requests_in_flight",
-		metric.WithDescription("Number of HTTP requests currently in flight"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		logger.Error("failed to create active requests metric", zap.Error(err))
-	}
-
-	return &HTTPMetrics{
-		RequestDuration: requestDuration,
-		RequestCount:    requestCount,
-		ErrorRequests:   errorRequests,
-		ResponseStatus:  responseStatus,
-		ActiveRequests:  activeRequests,
-	}
-}
 
 // Router handles all routing logic and middleware setup
 type Router struct {
@@ -116,21 +52,19 @@ func (r *Router) SetupRoutes(countryFinder *finder.IpFinder) {
 }
 
 // SetupMiddleware configures rate limiting and metrics middleware
-func (r *Router) SetupMiddleware(metrics *HTTPMetrics) http.Handler {
+func (r *Router) SetupMiddleware(metrics *telemetry.HTTPMetrics) http.Handler {
 	r.logger.Info("setting up middleware")
 
-	// Create rate limiter
-
 	// Apply middlewares in order: metrics -> rate limiting -> router
-	metricsHandler := MetricsMiddleware(metrics, r.logger.Named("metrics"))(r.router)
-	rateLimitedRouter := RateLimitMiddleware(r.rateLimiter, metricsHandler)
+	metricsHandler := metricsMiddleware(metrics, r.logger.Named("metrics"))(r.router)
+	rateLimitedRouter := rateLimitMiddleware(r.rateLimiter, metricsHandler)
 
 	r.logger.Info("middleware configured successfully")
 	return rateLimitedRouter
 }
 
 // MetricsMiddleware creates middleware for comprehensive HTTP metrics
-func MetricsMiddleware(metrics *HTTPMetrics, logger *zap.Logger) func(http.Handler) http.Handler {
+func metricsMiddleware(metrics *telemetry.HTTPMetrics, logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -142,7 +76,7 @@ func MetricsMiddleware(metrics *HTTPMetrics, logger *zap.Logger) func(http.Handl
 			}
 
 			// Create response writer wrapper to capture status code
-			wrappedWriter := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+			wrappedWriter := &ResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 			// Call next handler
 			next.ServeHTTP(wrappedWriter, r)
@@ -195,24 +129,7 @@ func MetricsMiddleware(metrics *HTTPMetrics, logger *zap.Logger) func(http.Handl
 	}
 }
 
-// responseWriter wraps http.ResponseWriter to capture status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	size, err := rw.ResponseWriter.Write(b)
-	return size, err
-}
-
-// RateLimitMiddleware wraps handlers with the rate limiter
-func RateLimitMiddleware(l limiter.RateLimiter, next http.Handler) http.Handler {
+func rateLimitMiddleware(l limiter.RateLimiter, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.Allow() {
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
@@ -220,11 +137,6 @@ func RateLimitMiddleware(l limiter.RateLimiter, next http.Handler) http.Handler 
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// GetRouter returns the configured router
-func (r *Router) GetRouter() *mux.Router {
-	return r.router
 }
 
 // CreateServer creates and configures an HTTP server with the router
@@ -246,17 +158,4 @@ func (r *Router) CreateServer(port string, handler http.Handler) *http.Server {
 		zap.Duration("idle_timeout", srv.IdleTimeout))
 
 	return srv
-}
-
-// ParseRPSLimit parses the RPS limit from environment variable with fallback
-func ParseRPSLimit(rpsLimitStr string, logger *zap.Logger) int {
-	rpsLimit := 10 // default RPS limit
-	if rpsLimitStr != "" {
-		if val, err := strconv.Atoi(rpsLimitStr); err == nil && val > 0 {
-			rpsLimit = val
-		} else {
-			logger.Warn("invalid RPS_LIMIT, using default", zap.String("RPS_LIMIT", rpsLimitStr))
-		}
-	}
-	return rpsLimit
 }
