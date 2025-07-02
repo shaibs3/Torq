@@ -20,9 +20,14 @@ type record struct {
 	country string
 }
 
-func NewCSVProvider(path string, logger *zap.Logger) (*CSVProvider, error) {
+func NewCSVProvider(config DbConfig, logger *zap.Logger) (*CSVProvider, error) {
 	// Create a named logger for the CSV provider
 	csvLogger := logger.Named("csv")
+
+	path, ok := config.ExtraDetails["file_path"].(string)
+	if !ok {
+		return nil, fmt.Errorf("file_path is required for CSV provider")
+	}
 	csvLogger.Info("initializing CSV provider", zap.String("path", path))
 
 	file, err := os.Open(path) // #nosec G304

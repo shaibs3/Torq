@@ -2,12 +2,13 @@ package app
 
 import (
 	"context"
-	"github.com/shaibs3/Torq/internal/limiter"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/shaibs3/Torq/internal/limiter"
 
 	"github.com/shaibs3/Torq/internal/config"
 	"github.com/shaibs3/Torq/internal/finder"
@@ -34,7 +35,8 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 
 	// Initialize IP DB provider
-	dbProvider, err := lookup.GetDbProvider(cfg.IPDBConfig, logger.Named("db_provider"))
+	factory := lookup.NewFactory(logger.Named("db_provider"))
+	dbProvider, err := factory.CreateProvider(cfg.IPDBConfig)
 	if err != nil {
 		return nil, err
 	}

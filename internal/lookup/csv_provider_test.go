@@ -31,7 +31,14 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 		}
 	}(path)
 
-	provider, err := NewCSVProvider(path, logger)
+	config := DbConfig{
+		DbType: DbTypeCSV,
+		ExtraDetails: map[string]interface{}{
+			"file_path": path,
+		},
+	}
+
+	provider, err := NewCSVProvider(config, logger)
 	require.NoError(t, err)
 
 	city, country, err := provider.Lookup("1.2.3.4")
@@ -43,7 +50,14 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 func TestNewCSVProvider_InvalidFile(t *testing.T) {
 	logger := zap.NewNop() // Use no-op logger for tests
 
-	_, err := NewCSVProvider("nonexistent.csv", logger)
+	config := DbConfig{
+		DbType: DbTypeCSV,
+		ExtraDetails: map[string]interface{}{
+			"file_path": "nonexistent.csv",
+		},
+	}
+
+	_, err := NewCSVProvider(config, logger)
 	assert.Error(t, err)
 }
 
@@ -54,7 +68,14 @@ func TestCSVProvider_Lookup_NotFound(t *testing.T) {
 	path := createTempCSV(t, csvContent)
 	defer os.Remove(path) //nolint:errcheck
 
-	provider, err := NewCSVProvider(path, logger)
+	config := DbConfig{
+		DbType: DbTypeCSV,
+		ExtraDetails: map[string]interface{}{
+			"file_path": path,
+		},
+	}
+
+	provider, err := NewCSVProvider(config, logger)
 	require.NoError(t, err)
 
 	_, _, err = provider.Lookup("8.8.8.8")

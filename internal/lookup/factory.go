@@ -7,46 +7,32 @@ import (
 	"go.uber.org/zap"
 )
 
-// DbType represents the supported database types
-type DbType string
-
-const (
-	DbTypeCSV DbType = "csv"
-	// Add more database types here as you implement them
-	// DbTypeDatabase DbType = "database"
-	// DbTypeMemory   DbType = "memory"
-)
-
-// String returns the string representation of the database type
-func (dt DbType) String() string {
-	return string(dt)
+// ProviderFactory defines the interface for creating database providers
+type ProviderFactory interface {
+	CreateProvider(configJSON string) (DbProvider, error)
 }
 
-// IsValid checks if the database type is supported
-func (dt DbType) IsValid() bool {
-	switch dt {
-	case DbTypeCSV:
-		return true
-	default:
-		return false
+// Factory implements ProviderFactory for creating database providers
+type Factory struct {
+	logger *zap.Logger
+}
+
+// NewFactory creates a new factory instance
+func NewFactory(logger *zap.Logger) *Factory {
+	return &Factory{
+		logger: logger.Named("factory"),
 	}
 }
 
-// DbConfig represents the configuration for a database provider
-type DbConfig struct {
-	DbType       DbType                 `json:"dbtype"`
-	ExtraDetails map[string]interface{} `json:"extra_details"`
-}
-
-// GetDbProvider creates a database provider based on JSON configuration
-func GetDbProvider(configJSON string, logger *zap.Logger) (DbProvider, error) {
+func (f *Factory) CreateProvider(configJSON string) (DbProvider, error) {
 	var config DbConfig
-	logger.Info("configJSON", zap.String("configJSON", configJSON))
+	f.logger.Info("parsing configuration", zap.String("configJSON", configJSON))
+
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse database configuration JSON: %w", err)
 	}
 
-	logger.Info("creating database provider",
+	f.logger.Info("creating database provider",
 		zap.String("db_type", config.DbType.String()),
 		zap.Any("extra_details", config.ExtraDetails))
 
@@ -57,19 +43,8 @@ func GetDbProvider(configJSON string, logger *zap.Logger) (DbProvider, error) {
 
 	switch config.DbType {
 	case DbTypeCSV:
-		return createCSVProvider(config, logger)
+		return NewCSVProvider(config, f.logger)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", config.DbType)
 	}
-}
-
-// createCSVProvider creates a CSV provider from configuration using existing NewCSVProvider
-func createCSVProvider(config DbConfig, logger *zap.Logger) (DbProvider, error) {
-	filePath, ok := config.ExtraDetails["file_path"].(string)
-	if !ok {
-		return nil, fmt.Errorf("file_path is required for CSV provider")
-	}
-
-	logger.Info("creating CSV provider", zap.String("file_path", filePath))
-	return NewCSVProvider(filePath, logger)
 }

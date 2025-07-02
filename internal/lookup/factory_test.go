@@ -1,6 +1,7 @@
 package lookup
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -42,7 +43,8 @@ func TestGetDbProvider_CSV(t *testing.T) {
 		}
 	}`
 
-	provider, err := GetDbProvider(configJSON, logger)
+	factory := NewFactory(logger)
+	provider, err := factory.CreateProvider(configJSON)
 	require.NoError(t, err)
 	assert.NotNil(t, provider)
 
@@ -62,7 +64,8 @@ func TestGetDbProvider_InvalidDbType(t *testing.T) {
 		"extra_details": {}
 	}`
 
-	provider, err := GetDbProvider(configJSON, logger)
+	factory := NewFactory(logger)
+	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
 	assert.Contains(t, err.Error(), "unsupported database type")
@@ -77,7 +80,8 @@ func TestGetDbProvider_MissingRequiredField(t *testing.T) {
 		"extra_details": {}
 	}`
 
-	provider, err := GetDbProvider(configJSON, logger)
+	factory := NewFactory(logger)
+	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
 	assert.Contains(t, err.Error(), "file_path is required for CSV provider")
@@ -89,8 +93,133 @@ func TestGetDbProvider_InvalidJSON(t *testing.T) {
 	// Test invalid JSON
 	configJSON := `{ invalid json }`
 
-	provider, err := GetDbProvider(configJSON, logger)
+	factory := NewFactory(logger)
+	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
 	assert.Contains(t, err.Error(), "failed to parse database configuration JSON")
+}
+
+func TestNewFactory(t *testing.T) {
+	logger := zap.NewNop()
+	factory := NewFactory(logger)
+
+	assert.NotNil(t, factory)
+	assert.Equal(t, logger.Named("factory"), factory.logger)
+}
+
+func TestFactory_CreateProvider_CSV(t *testing.T) {
+	logger := zap.NewNop()
+	factory := NewFactory(logger)
+
+	configJSON := `{"dbtype": "csv", "extra_details": {"file_path": "TestFiles/ip_data.csv"}}`
+
+	provider, err := factory.CreateProvider(configJSON)
+	require.NoError(t, err)
+	assert.NotNil(t, provider)
+
+	// Test that it's actually a CSV provider by doing a lookup
+	city, country, err := provider.Lookup("90.91.92.93")
+	require.NoError(t, err)
+	assert.Equal(t, "Paris", city)
+	assert.Equal(t, "France", country)
+}
+
+func TestFactory_CreateProvider_InvalidJSON(t *testing.T) {
+	logger := zap.NewNop()
+	factory := NewFactory(logger)
+
+	configJSON := `{ invalid json }`
+
+	provider, err := factory.CreateProvider(configJSON)
+	assert.Error(t, err)
+	assert.Nil(t, provider)
+	assert.Contains(t, err.Error(), "failed to parse database configuration JSON")
+}
+
+func TestFactory_CreateProvider_InvalidDbType(t *testing.T) {
+	logger := zap.NewNop()
+	factory := NewFactory(logger)
+
+	configJSON := `{"dbtype": "invalid", "extra_details": {}}`
+
+	provider, err := factory.CreateProvider(configJSON)
+	assert.Error(t, err)
+	assert.Nil(t, provider)
+	assert.Contains(t, err.Error(), "unsupported database type: invalid")
+}
+
+func TestFactory_CreateProvider_MissingRequiredField(t *testing.T) {
+	logger := zap.NewNop()
+	factory := NewFactory(logger)
+
+	configJSON := `{"dbtype": "csv", "extra_details": {}}`
+
+	provider, err := factory.CreateProvider(configJSON)
+	assert.Error(t, err)
+	assert.Nil(t, provider)
+	assert.Contains(t, err.Error(), "file_path is required for CSV provider")
+}
+
+// MockFactory demonstrates how easy it is to create a mock factory for testing
+type MockFactory struct {
+	providers map[string]DbProvider
+	logger    *zap.Logger
+}
+
+func NewMockFactory(logger *zap.Logger) *MockFactory {
+	return &MockFactory{
+		providers: make(map[string]DbProvider),
+		logger:    logger,
+	}
+}
+
+func (m *MockFactory) CreateProvider(configJSON string) (DbProvider, error) {
+	// For testing, we can return predefined providers based on config
+	// This demonstrates the flexibility of the interface approach
+	if provider, exists := m.providers[configJSON]; exists {
+		return provider, nil
+	}
+	return nil, fmt.Errorf("no provider configured for: %s", configJSON)
+}
+
+func (m *MockFactory) SetProvider(configJSON string, provider DbProvider) {
+	m.providers[configJSON] = provider
+}
+
+func TestMockFactory(t *testing.T) {
+	logger := zap.NewNop()
+	mockFactory := NewMockFactory(logger)
+
+	// Create a mock provider
+	mockProvider := &MockProvider{
+		data: map[string]record{
+			"1.2.3.4": {city: "Test City", country: "Test Country"},
+		},
+	}
+
+	configJSON := `{"dbtype": "csv", "extra_details": {"file_path": "test.csv"}}`
+	mockFactory.SetProvider(configJSON, mockProvider)
+
+	// Test the mock factory
+	provider, err := mockFactory.CreateProvider(configJSON)
+	require.NoError(t, err)
+	assert.NotNil(t, provider)
+
+	city, country, err := provider.Lookup("1.2.3.4")
+	require.NoError(t, err)
+	assert.Equal(t, "Test City", city)
+	assert.Equal(t, "Test Country", country)
+}
+
+// MockProvider for testing
+type MockProvider struct {
+	data map[string]record
+}
+
+func (m *MockProvider) Lookup(ip string) (string, string, error) {
+	if rec, exists := m.data[ip]; exists {
+		return rec.city, rec.country, nil
+	}
+	return "", "", fmt.Errorf("IP not found")
 }
