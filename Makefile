@@ -36,9 +36,9 @@ clean:
 	@go clean -testcache
 
 ## Run the application
-run:
+run:build
 	@echo "Running..."
-	$(GOBUILD) -o $(BINARY_DIR) -v ./...
+	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
 	./$(BINARY_DIR)/$(BINARY_NAME)
 
 ## Run the application with hot reload (requires air)

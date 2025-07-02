@@ -14,6 +14,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.uber.org/zap"
 )
 
@@ -32,6 +34,19 @@ func main() {
 	defer func() {
 		_ = logger.Sync()
 	}()
+
+	// Initialize OpenTelemetry with Prometheus exporter
+	exporter, err := prometheus.New()
+	if err != nil {
+		logger.Fatal("failed to initialize prometheus exporter", zap.Error(err))
+	}
+
+	provider := metric.NewMeterProvider(
+		metric.WithReader(exporter),
+	)
+	otel.SetMeterProvider(provider)
+
+	logger.Info("OpenTelemetry metrics initialized with Prometheus exporter")
 
 	// Initialize metrics
 	meter := otel.GetMeterProvider().Meter("torq")

@@ -10,6 +10,7 @@ import (
 	"github.com/shaibs3/Torq/internal/service_health"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
@@ -102,6 +103,9 @@ func (r *Router) SetupRoutes(countryFinder *finder.IpFinder) {
 	// Health check endpoints
 	r.router.HandleFunc("/health/live", service_health.LivenessHandler(r.logger)).Methods("GET")
 	r.router.HandleFunc("/health/ready", service_health.ReadinessHandler(r.logger)).Methods("GET")
+
+	// Metrics endpoint
+	r.router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 
 	// API endpoints
 	r.router.HandleFunc("/v1/find-country", countryFinder.FindIpHandler).Methods("GET")
