@@ -13,6 +13,7 @@ import (
 	"github.com/shaibs3/Torq/internal/router"
 
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +32,10 @@ func main() {
 	defer func() {
 		_ = logger.Sync()
 	}()
+
+	// Initialize metrics
+	meter := otel.GetMeterProvider().Meter("torq")
+	httpMetrics := router.NewHTTPMetrics(meter, logger.Named("metrics"))
 
 	// Init IP DB provider
 	providerType := os.Getenv("IP_DB_PROVIDER")
@@ -52,8 +57,8 @@ func main() {
 	// Rate limit config
 	rpsLimit := router.ParseRPSLimit(os.Getenv("RPS_LIMIT"), logger)
 
-	// Setup middleware
-	handler := appRouter.SetupMiddleware(rpsLimit)
+	// Setup middleware with metrics
+	handler := appRouter.SetupMiddleware(rpsLimit, httpMetrics)
 
 	// Create server
 	port := os.Getenv("PORT")
