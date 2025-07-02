@@ -1,21 +1,23 @@
 # Torq - IP Geolocation Service
 
-A Go-based microservice that provides IP geolocation functionality through a REST API. The service can determine the country of an IP address using various backend providers.
+A Go-based microservice that provides IP geolocation functionality through a REST API. The service can determine the country of an IP address using various backend providers with comprehensive metrics and observability.
 
 ## Features
 
 - 🌍 IP to country geolocation
-- 🔌 Pluggable backend providers
+- 🔌 Pluggable backend providers with JSON configuration
+- 📊 OpenTelemetry metrics and tracing
 - 🐳 Docker support
 - 🧪 Comprehensive testing
-- 📊 Health check endpoint
+- 📈 Prometheus metrics endpoint
 - 🔒 Security scanning
+- 🏗️ Clean architecture with internal packages
 
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.24 or higher
 - Docker (optional)
 
 ### Local Development
@@ -31,10 +33,17 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    go mod download
    ```
 
-3. **Set up environment variables**
+3. **Set up database configuration**
+   
+   **Option 1: JSON Configuration (Recommended)**
    ```bash
-   cp .env.example .env
-   # Edit .env with your IP database provider configuration
+   export DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "./TestFiles/ip_data.csv"}}'
+   ```
+   
+   **Option 2: Legacy Environment Variables**
+   ```bash
+   export IP_DB_PROVIDER=csv
+   export IP_DB_PATH=./TestFiles/ip_data.csv
    ```
 
 4. **Run the application**
@@ -49,6 +58,11 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 5. **Test the API**
    ```bash
    curl "http://localhost:8080/v1/find-country?ip=90.91.92.93"
+   ```
+
+6. **Check metrics**
+   ```bash
+   curl "http://localhost:8080/metrics"
    ```
 
 ### Using Docker
@@ -86,17 +100,15 @@ curl "http://localhost:8080/v1/find-country?ip=90.91.92.93"
 ```json
 {
   "country": "France",
-  "country_code": "FR",
-  "ip": "90.91.92.93",
-  "timestamp": "2024-01-15T10:30:00Z"
+  "city": "Paris",
+  "ip": "90.91.92.93"
 }
 ```
 
 **Error Response:**
 ```json
 {
-  "error": "Invalid IP address",
-  "message": "The provided IP address is not valid"
+  "error": "IP not found"
 }
 ```
 
@@ -138,29 +150,93 @@ curl "http://localhost:8080/health/ready"
 }
 ```
 
-**Not Ready Response (still returns 200):**
-```json
-{
-  "status": "not ready",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "service": "torq"
-}
+### Metrics Endpoint
+
+**Endpoint:** `GET /metrics`
+
+**Description:** Exposes Prometheus metrics for monitoring and observability.
+
+**Example Request:**
+```bash
+curl "http://localhost:8080/metrics"
 ```
+
+**Available Metrics:**
+- `http_request_duration_seconds` - Request duration histogram
+- `http_requests_total` - Total request count
+- `http_error_requests_total` - Error request count (4xx, 5xx)
+- `http_response_status_total` - Response status code count
+- `http_requests_in_flight` - Currently active requests
 
 ## Configuration
 
-The service uses environment variables for configuration:
+### Database Configuration
+
+The service supports flexible database configuration using JSON:
+
+#### JSON Configuration (Recommended)
+
+Set the `DB_CONFIG` environment variable:
+
+```bash
+export DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "/path/to/data.csv"}}'
+```
+
+#### Supported Database Types
+
+The application uses type-safe enums for database types:
+
+- `"csv"` - CSV file provider
+
+#### Configuration Examples
+
+**CSV Provider:**
+```json
+{
+  "dbtype": "csv",
+  "extra_details": {
+    "file_path": "/path/to/ip_data.csv"
+  }
+}
+```
+
+#### CSV File Format
+
+The CSV file should have the following format:
+```csv
+IP,CITY,COUNTRY
+1.2.3.4,New York,USA
+5.6.7.8,London,UK
+```
+
+### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `IP_DB_PROVIDER` | IP database provider to use | `maxmind` |
+| `DB_CONFIG` | JSON configuration for database provider | - |
+| `IP_DB_PROVIDER` | Legacy: IP database provider type | - |
+| `IP_DB_PATH` | Legacy: Path to database file | - |
 | `PORT` | Server port | `8080` |
+| `RPS_LIMIT` | Rate limit (requests per second) | `10` |
 
-### Supported Providers
+## Project Structure
 
-- **MaxMind**: Uses MaxMind GeoIP2 database
-- **IP2Location**: Uses IP2Location database
-- **Custom**: Custom provider implementation
+```
+Torq/
+├── cmd/
+│   └── main.go                 # Application entry point
+├── internal/
+│   ├── finder/                 # IP lookup business logic
+│   ├── lookup/                 # Database providers
+│   ├── router/                 # HTTP routing and middleware
+│   ├── service_health/         # Health check handlers
+│   └── limiter/                # Rate limiting
+├── TestFiles/                  # Test data files
+├── go.mod                      # Go module file
+├── Makefile                    # Build automation
+├── Dockerfile                  # Docker configuration
+└── README.md                   # This file
+```
 
 ## Development
 
@@ -204,27 +280,8 @@ make clean
 make help
 ```
 
-### Project Structure
+### Testing
 
-```
-Torq/
-├── main.go                 # Application entry point
-├── go.mod                  # Go module file
-├── go.sum                  # Go module checksums
-├── Makefile               # Build automation
-├── Dockerfile             # Docker configuration
-├── .dockerignore          # Docker ignore file
-├── .github/
-│   └── workflows/
-│       └── ci.yml         # GitHub Actions CI/CD
-├── lookup/                # IP lookup providers
-├── CountryFinder/         # Country finder logic
-└── README.md              # This file
-```
-
-## Testing
-
-### Run Tests
 ```bash
 # Run all tests
 make test
@@ -233,86 +290,47 @@ make test
 make test-coverage
 
 # Run specific test
-go test ./lookup -v
+go test ./internal/lookup -v
 ```
 
-### Test Examples
-```bash
-# Test the API endpoint
-curl "http://localhost:8080/v1/find-country?ip=8.8.8.8"
+## Observability
 
-# Test with invalid IP
-curl "http://localhost:8080/v1/find-country?ip=invalid"
+### Metrics
 
-# Test health endpoints
-curl "http://localhost:8080/health/live"
-curl "http://localhost:8080/health/ready"
-```
+The service exposes comprehensive HTTP metrics via Prometheus:
 
-## Deployment
+- **Request Duration**: Histogram of request processing times
+- **Request Count**: Total number of requests by method/path/status
+- **Error Rate**: Count of error responses (4xx, 5xx)
+- **Active Requests**: Currently in-flight requests
 
-### Docker Deployment
+### Logging
 
-1. **Build the image**
-   ```bash
-   docker build -t torq:latest .
-   ```
+The service uses structured logging with Zap:
+- JSON format for production
+- Request/response logging
+- Error tracking with context
 
-2. **Run the container**
-   ```bash
-   docker run -p 8080:8080 -e IP_DB_PROVIDER=maxmind torq:latest
-   ```
+### Health Checks
 
-3. **Check container health**
-   ```bash
-   # Check health status
-   docker ps
-   
-   # View health check logs
-   docker inspect --format='{{json .State.Health}}' <container_id>
-   
-   # Run health check manually
-   docker exec <container_id> ./healthcheck.sh
-   ```
+- **Liveness**: Service is running
+- **Readiness**: Service is ready to handle requests
 
-### Kubernetes Deployment
+## Error Handling
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: torq
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: torq
-  template:
-    metadata:
-      labels:
-        app: torq
-    spec:
-      containers:
-      - name: torq
-        image: torq:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: IP_DB_PROVIDER
-          value: "maxmind"
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-```
+The factory provides descriptive errors for:
+- Invalid JSON configuration
+- Missing required fields
+- Unsupported database types
+- File not found errors
+- Rate limit exceeded
+
+## Type Safety
+
+The application validates database types at runtime:
+- Only supported types are accepted
+- Prevents configuration typos
+- Ensures only valid configurations are processed
 
 ## Contributing
 
@@ -324,8 +342,4 @@ spec:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, please open an issue in the GitHub repository or contact the development team.
+This project is licensed under the MIT License.
