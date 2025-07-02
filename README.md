@@ -82,6 +82,30 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    curl "http://localhost:8080/v1/find-country?ip=90.91.92.93"
    ```
 
+### Publishing to Docker Hub
+
+1. **Set your Docker Hub username**
+   ```bash
+   export DOCKER_USERNAME=your-dockerhub-username
+   ```
+
+2. **Build and push to Docker Hub**
+   ```bash
+   make docker-build-push
+   ```
+
+   Or build and push separately:
+   ```bash
+   make docker-build
+   make docker-push
+   ```
+
+3. **Pull and run from Docker Hub**
+   ```bash
+   docker pull your-dockerhub-username/torq:latest
+   docker run -p 8080:8080 your-dockerhub-username/torq:latest
+   ```
+
 ## API Documentation
 
 ### Find Country by IP
@@ -331,6 +355,47 @@ The application validates database types at runtime:
 - Only supported types are accepted
 - Prevents configuration typos
 - Ensures only valid configurations are processed
+
+## GitHub Actions and Docker Hub Integration
+
+### Setting up Docker Hub Credentials in GitHub
+
+To enable automatic Docker image publishing via GitHub Actions, you need to add your Docker Hub credentials as GitHub secrets:
+
+1. **Create a Docker Hub Access Token**
+   - Go to [Docker Hub](https://hub.docker.com/settings/security)
+   - Click "New Access Token"
+   - Give it a name (e.g., "GitHub Actions")
+   - Copy the generated token
+
+2. **Add Secrets to GitHub Repository**
+   - Go to your GitHub repository
+   - Navigate to Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Add these secrets:
+     - `DOCKERHUB_USERNAME`: Your Docker Hub username
+     - `DOCKERHUB_TOKEN`: The access token you created
+
+3. **Automatic Publishing**
+   - The workflow will automatically build and push Docker images on:
+     - Push to main/master branch
+     - Tagged releases (v*)
+   - Images will be tagged with:
+     - Branch name (e.g., `main`)
+     - Git SHA
+     - Version tags (e.g., `v1.0.0`)
+
+### Manual Docker Hub Publishing
+
+For manual publishing without GitHub Actions:
+
+```bash
+# Login to Docker Hub
+docker login
+
+# Build and push
+make docker-build-push DOCKER_USERNAME=your-username
+```
 
 ## Contributing
 

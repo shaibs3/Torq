@@ -3,6 +3,8 @@ BINARY_NAME=torq
 BINARY_UNIX=$(BINARY_NAME)_unix
 DOCKER_IMAGE=torq
 DOCKER_TAG=latest
+DOCKER_USERNAME?=your-dockerhub-username
+DOCKER_REPO=$(DOCKER_USERNAME)/$(DOCKER_IMAGE)
 PORT=8080
 
 # Go related variables
@@ -17,7 +19,7 @@ BINARY_DIR=bin
 # Make is verbose in Linux. Make it silent.
 MAKEFLAGS += --silent
 
-.PHONY: all build clean run test deps docker-build docker-run docker-stop help
+.PHONY: all build clean run test deps docker-build docker-run docker-stop docker-push docker-build-push docker-clean help
 
 ## Default: run all
 all: clean deps test build
@@ -99,6 +101,7 @@ build-linux:
 docker-build:
 	@echo "Building Docker image..."
 	docker build --build-arg PORT=$(PORT) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_REPO):$(DOCKER_TAG)
 
 ## Docker run
 docker-run:
@@ -111,10 +114,24 @@ docker-stop:
 	docker stop $(BINARY_NAME) || true
 	docker rm $(BINARY_NAME) || true
 
+## Docker push
+docker-push:
+	@echo "Pushing Docker image to Docker Hub..."
+	@if [ "$(DOCKER_USERNAME)" = "your-dockerhub-username" ]; then \
+		echo "Error: Please set DOCKER_USERNAME environment variable or update Makefile"; \
+		echo "Usage: make docker-push DOCKER_USERNAME=your-username"; \
+		exit 1; \
+	fi
+	docker push $(DOCKER_REPO):$(DOCKER_TAG)
+
+## Docker build and push
+docker-build-push: docker-build docker-push
+
 ## Docker clean
 docker-clean:
 	@echo "Cleaning Docker images..."
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
+	docker rmi $(DOCKER_REPO):$(DOCKER_TAG) || true
 
 ## Generate API documentation (if using swagger)
 docs:
@@ -155,6 +172,8 @@ help:
 	@echo "  docker-build  - Build Docker image"
 	@echo "  docker-run    - Run Docker container"
 	@echo "  docker-stop   - Stop Docker container"
+	@echo "  docker-push   - Push Docker image to Docker Hub"
+	@echo "  docker-build-push - Build and push Docker image"
 	@echo "  docker-clean  - Clean Docker images"
 	@echo "  docs          - Generate API documentation"
 	@echo "  security      - Run security scan"
