@@ -250,10 +250,14 @@ Torq/
 ├── cmd/
 │   └── main.go                 # Application entry point
 ├── internal/
+│   ├── app/                    # Main application logic
+│   ├── config/                 # Configuration management
 │   ├── finder/                 # IP lookup business logic
 │   ├── lookup/                 # Database providers
+│   ├── logger/                 # Logger initialization
 │   ├── router/                 # HTTP routing and middleware
 │   ├── service_health/         # Health check handlers
+│   ├── telemetry/              # OpenTelemetry setup
 │   └── limiter/                # Rate limiting
 ├── TestFiles/                  # Test data files
 ├── go.mod                      # Go module file
@@ -348,6 +352,27 @@ The factory provides descriptive errors for:
 - Unsupported database types
 - File not found errors
 - Rate limit exceeded
+
+## Architecture
+
+The application follows a clean, modular architecture:
+
+### **Separation of Concerns**
+- **`cmd/main.go`**: Minimal entry point, only handles initialization
+- **`internal/app`**: Main application logic and lifecycle management
+- **`internal/config`**: Centralized configuration management
+- **`internal/logger`**: Logger initialization and configuration
+- **`internal/telemetry`**: OpenTelemetry setup and metrics
+- **`internal/router`**: HTTP routing and middleware
+- **`internal/finder`**: Business logic for IP geolocation
+- **`internal/lookup`**: Database provider abstractions
+
+### **Benefits**
+- **Testability**: Each component can be tested in isolation
+- **Maintainability**: Clear separation of responsibilities
+- **Flexibility**: Easy to modify or replace individual components
+- **Dependency Injection**: Clean dependency management
+- **Error Handling**: Centralized error handling and logging
 
 ## Type Safety
 

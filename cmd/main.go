@@ -1,110 +1,44 @@
 package main
 
 import (
-	"context"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"log"
 
-	"github.com/shaibs3/Torq/internal/finder"
-	"github.com/shaibs3/Torq/internal/lookup"
-	"github.com/shaibs3/Torq/internal/router"
-
-	"github.com/joho/godotenv"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
+	"github.com/shaibs3/Torq/internal/app"
+	"github.com/shaibs3/Torq/internal/config"
+	"github.com/shaibs3/Torq/internal/logger"
 	"go.uber.org/zap"
 )
 
 func main() {
-	// Load .env if present (optional)
-	if err := godotenv.Load(); err != nil {
-		// Don't panic if .env file doesn't exist, just log it
-		// This allows the app to run in containers without .env files
-	}
-
-	// Initialize logger
-	logger, err := zap.NewProduction()
+	// Initialize logger first (for configuration loading)
+	initialLogger, err := logger.New("production", "info")
 	if err != nil {
-		panic("failed to initialize logger: " + err.Error())
+		log.Fatal("failed to initialize logger:", err)
 	}
 	defer func() {
-		_ = logger.Sync()
+		_ = initialLogger.Sync()
 	}()
 
-	// Initialize OpenTelemetry with Prometheus exporter
-	exporter, err := prometheus.New()
+	// Load configuration
+	cfg := config.Load(initialLogger)
+
+	// Create application logger with proper configuration
+	appLogger, err := logger.New(cfg.Environment, cfg.LogLevel)
 	if err != nil {
-		logger.Fatal("failed to initialize prometheus exporter", zap.Error(err))
+		initialLogger.Fatal("failed to create application logger", zap.Error(err))
 	}
-
-	provider := metric.NewMeterProvider(
-		metric.WithReader(exporter),
-	)
-	otel.SetMeterProvider(provider)
-
-	logger.Info("OpenTelemetry metrics initialized with Prometheus exporter")
-
-	// Initialize metrics
-	meter := otel.GetMeterProvider().Meter("torq")
-	httpMetrics := router.NewHTTPMetrics(meter, logger.Named("metrics"))
-
-	// Init IP DB provider
-	ipDbProviderConfig := os.Getenv("IP_DB_CONFIG")
-
-	dbProvider, err := lookup.GetDbProvider(ipDbProviderConfig, logger.Named("db_provider"))
-	if err != nil {
-		logger.Fatal("failed to initialize provider", zap.Error(err))
-	}
-	logger.Info("provider initialized")
-
-	// Init country finder
-	ipFinder := finder.NewIpFinder(dbProvider)
-
-	// Init router
-	appRouter := router.NewRouter(logger)
-	appRouter.SetupRoutes(ipFinder)
-
-	// Rate limit config
-	rpsLimit := router.ParseRPSLimit(os.Getenv("RPS_LIMIT"), logger)
-
-	// Setup middleware with metrics
-	handler := appRouter.SetupMiddleware(rpsLimit, httpMetrics)
-
-	// Create server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	port = ":" + port
-
-	server := appRouter.CreateServer(port, handler)
-	logger.Info("server is running", zap.String("port", port))
-
-	// Graceful shutdown
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("server failed to start", zap.Error(err))
-		}
+	defer func() {
+		_ = appLogger.Sync()
 	}()
 
-	// Wait for interrupt signal
-	<-ctx.Done()
-	logger.Info("shutting down server...")
-
-	// Graceful shutdown
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("server forced to shutdown", zap.Error(err))
+	// Create and run application
+	application, err := app.New(cfg, appLogger)
+	if err != nil {
+		appLogger.Fatal("failed to create application", zap.Error(err))
 	}
 
-	logger.Info("server exited")
+	// Run the application
+	if err := application.Run(); err != nil {
+		appLogger.Fatal("application failed", zap.Error(err))
+	}
 }
