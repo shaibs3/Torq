@@ -53,14 +53,13 @@ func main() {
 	httpMetrics := router.NewHTTPMetrics(meter, logger.Named("metrics"))
 
 	// Init IP DB provider
-	providerType := os.Getenv("IP_DB_PROVIDER")
-	logger.Info("initializing service", zap.String("provider_type", providerType))
+	ipDbProviderConfig := os.Getenv("IP_DB_CONFIG")
 
-	dbProvider, err := lookup.GetDbProvider(providerType, logger.Named("db_provider"))
+	dbProvider, err := lookup.GetDbProvider(ipDbProviderConfig, logger.Named("db_provider"))
 	if err != nil {
-		logger.Fatal("failed to initialize provider", zap.Error(err), zap.String("provider_type", providerType))
+		logger.Fatal("failed to initialize provider", zap.Error(err))
 	}
-	logger.Info("provider initialized", zap.String("provider_type", providerType))
+	logger.Info("provider initialized")
 
 	// Init country finder
 	ipFinder := finder.NewIpFinder(dbProvider)
