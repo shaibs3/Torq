@@ -57,7 +57,7 @@ func (r *Router) SetupMiddleware(metrics *telemetry.HTTPMetrics) http.Handler {
 
 	// Apply middlewares in order: metrics -> rate limiting -> router
 	metricsHandler := metricsMiddleware(metrics, r.logger.Named("metrics"))(r.router)
-	rateLimitedRouter := rateLimitMiddleware(r.rateLimiter, metricsHandler)
+	rateLimitedRouter := r.rateLimitMiddleware(metricsHandler)
 
 	r.logger.Info("middleware configured successfully")
 	return rateLimitedRouter
@@ -129,9 +129,9 @@ func metricsMiddleware(metrics *telemetry.HTTPMetrics, logger *zap.Logger) func(
 	}
 }
 
-func rateLimitMiddleware(l limiter.RateLimiter, next http.Handler) http.Handler {
+func (router *Router) rateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !l.Allow() {
+		if !router.rateLimiter.Allow() {
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return
 		}
