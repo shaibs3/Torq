@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
@@ -44,10 +44,10 @@ func (p *PostgresProvider) Lookup(ip string) (string, string, error) {
 	p.logger.Debug("looking up IP", zap.String("ip", ip))
 
 	var city, country string
-	err := p.db.QueryRowContext(context.Background(),
-		"SELECT city, country FROM ip_lookup WHERE ip = $1", ip).Scan(&city, &country)
+	query := "SELECT city, country FROM ip_locations WHERE ip = $1"
+	err := p.db.QueryRowContext(context.Background(), query, ip).Scan(&city, &country)
 	if err != nil {
-		p.logger.Debug("IP not found in database", zap.String("ip", ip), zap.Error(err))
+		p.logger.Error("IP not found in database", zap.String("ip", ip), zap.Error(err))
 		return "", "", fmt.Errorf("IP not found: %w", err)
 	}
 

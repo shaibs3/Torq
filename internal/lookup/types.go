@@ -4,9 +4,9 @@ package lookup
 type DbType string
 
 const (
-	DbTypeCSV DbType = "csv"
+	DbTypeCSV      DbType = "csv"
+	DbTypePostgres DbType = "postgres"
 	// Add more database types here as you implement them
-	// DbTypeDatabase DbType = "database"
 	// DbTypeMemory   DbType = "memory"
 )
 
@@ -18,7 +18,7 @@ func (dt DbType) String() string {
 // IsValid checks if the database type is supported
 func (dt DbType) IsValid() bool {
 	switch dt {
-	case DbTypeCSV:
+	case DbTypeCSV, DbTypePostgres:
 		return true
 	default:
 		return false

@@ -36,8 +36,15 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 3. **Set up database configuration**
    
    **Option 1: Environment Variable**
+   
+   **For CSV:**
    ```bash
    export IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "./TestFiles/ip_data.csv"}}'
+   ```
+   
+   **For PostgreSQL:**
+   ```bash
+   export IP_DB_CONFIG='{"dbtype": "postgres", "extra_details": {"conn_str": "postgres://username:password@localhost:5432/ipdb?sslmode=disable"}}'
    ```
    
    **Option 2: .env File**
@@ -46,10 +53,14 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    cp .env_example .env
    
    # Edit the .env file with your configuration
-   # The file should contain:
+   # For CSV:
    IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "./TestFiles/ip_data.csv"}}'
+   
+   # For PostgreSQL:
+   # IP_DB_CONFIG='{"dbtype": "postgres", "extra_details": {"conn_str": "postgres://username:password@localhost:5432/ipdb?sslmode=disable"}}'
+   
    RPS_LIMIT=10
-   RPS_BURST=10
+   RPS_BURST=20
    PORT=8080
    ```
 
@@ -189,6 +200,7 @@ export IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "/path/to/
 The application uses type-safe enums for database types:
 
 - `"csv"` - CSV file provider
+- `"postgres"` - PostgreSQL database provider
 
 #### Configuration Examples
 
@@ -202,6 +214,16 @@ The application uses type-safe enums for database types:
 }
 ```
 
+**PostgreSQL Provider:**
+```json
+{
+  "dbtype": "postgres",
+  "extra_details": {
+    "conn_str": "postgres://username:password@localhost:5432/ipdb?sslmode=disable"
+  }
+}
+```
+
 #### CSV File Format
 
 The CSV file should have the following format:
@@ -209,6 +231,17 @@ The CSV file should have the following format:
 IP,CITY,COUNTRY
 1.2.3.4,New York,USA
 5.6.7.8,London,UK
+```
+
+#### PostgreSQL Table Structure
+
+The PostgreSQL database should have a table with the following structure:
+```sql
+CREATE TABLE ip_locations (
+    ip VARCHAR(45) PRIMARY KEY,
+    city VARCHAR(255) NOT NULL,
+    country VARCHAR(255) NOT NULL
+);
 ```
 
 ### Environment Variables

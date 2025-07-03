@@ -44,6 +44,8 @@ func (f *DbProviderFactory) CreateProvider(configJSON string) (DbProvider, error
 	switch config.DbType {
 	case DbTypeCSV:
 		return NewCSVProvider(config, f.logger)
+	case DbTypePostgres:
+		return NewPostgresProvider(config, f.logger)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", config.DbType)
 	}
