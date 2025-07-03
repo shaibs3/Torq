@@ -24,7 +24,7 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/shaibs3/Torq.git
    cd Torq
    ```
 
