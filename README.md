@@ -11,7 +11,8 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 - 🐳 Docker support
 - 🧪 Comprehensive testing
 - 📈 Prometheus metrics endpoint
-- 🔒 Security scanning
+- �� Security scanning
+- 🚀 Full CI/CD GitHub Actions pipeline with Docker Hub image publishing
 
 ## Quick Start
 
