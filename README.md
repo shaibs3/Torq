@@ -317,6 +317,14 @@ The service exposes comprehensive HTTP metrics via Prometheus:
 - **Active Requests**: Currently in-flight requests
 - **Rate limited Requests**: Number of rate limited requests
 
+#### Additional Business Metrics
+
+- **ip_lookup_duration_seconds** (histogram):
+  Duration of IP-to-country lookups in seconds. Useful for monitoring database performance and latency.
+
+- **ip_lookup_errors_total** (counter):
+  Total number of failed IP-to-country lookups. Useful for alerting on data issues or backend failures.
+
 
 
 
