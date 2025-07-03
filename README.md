@@ -88,29 +88,6 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    curl "http://localhost:8080/v1/find-country?ip=90.91.92.93"
    ```
 
-### Publishing to Docker Hub
-
-1. **Set your Docker Hub username**
-   ```bash
-   export DOCKER_USERNAME=your-dockerhub-username
-   ```
-
-2. **Build and push to Docker Hub**
-   ```bash
-   make docker-build-push
-   ```
-
-   Or build and push separately:
-   ```bash
-   make docker-build
-   make docker-push
-   ```
-
-3. **Pull and run from Docker Hub**
-   ```bash
-   docker pull your-dockerhub-username/torq:latest
-   docker run -p 8080:8080 your-dockerhub-username/torq:latest
-   ```
 
 ## API Documentation
 
