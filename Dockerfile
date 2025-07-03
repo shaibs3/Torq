@@ -23,6 +23,7 @@ FROM alpine:latest
 ARG PORT=8080
 ENV PORT=${PORT}
 ENV RPS_LIMIT=10
+ENV RPS_BURST=20
 EXPOSE ${PORT}
 
 RUN apk --no-cache add ca-certificates tzdata wget
