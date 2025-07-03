@@ -11,7 +11,6 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 - 🧪 Comprehensive testing
 - 📈 Prometheus metrics endpoint
 - 🔒 Security scanning
-- 🏗️ Clean architecture with internal packages
 
 ## Quick Start
 
@@ -185,12 +184,6 @@ curl "http://localhost:8080/health/ready"
 curl "http://localhost:8080/metrics"
 ```
 
-**Available Metrics:**
-- `http_request_duration_seconds` - Request duration histogram
-- `http_requests_total` - Total request count
-- `http_error_requests_total` - Error request count (4xx, 5xx)
-- `http_response_status_total` - Response status code count
-- `http_requests_in_flight` - Currently active requests
 
 ## Configuration
 
@@ -200,10 +193,10 @@ The service supports flexible database configuration using JSON:
 
 #### JSON Configuration (Recommended)
 
-Set the `DB_CONFIG` environment variable:
+Set the `IP_DB_CONFIG` environment variable:
 
 ```bash
-export DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "/path/to/data.csv"}}'
+export IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "/path/to/data.csv"}}'
 ```
 
 #### Supported Database Types
@@ -235,38 +228,16 @@ IP,CITY,COUNTRY
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DB_CONFIG` | JSON configuration for database provider | - |
-| `IP_DB_PROVIDER` | Legacy: IP database provider type | - |
-| `IP_DB_PATH` | Legacy: Path to database file | - |
-| `PORT` | Server port | `8080` |
-| `RPS_LIMIT` | Rate limit (requests per second) | `10` |
+| Variable | Description                              | Default      |
+|----------|------------------------------------------|--------------|
+| `IP_DB_CONFIG` | JSON configuration for database provider | -            |
+| `PORT` | Server port                              | `8080`       |
+| `RPS_LIMIT` | Rate limit (requests per second)         | `10`         |
+| `LOG_LEVEL` | Log level                                | `info`       |
+| `ENVIRONMENT` | ENVIRONMENT                             | `production` |
 
-## Project Structure
 
-```
-Torq/
-├── cmd/
-│   └── main.go                 # Application entry point
-├── internal/
-│   ├── app/                    # Main application logic
-│   ├── config/                 # Configuration management
-│   ├── finder/                 # IP lookup business logic
-│   ├── lookup/                 # Database providers
-│   ├── logger/                 # Logger initialization
-│   ├── router/                 # HTTP routing and middleware
-│   ├── service_health/         # Health check handlers
-│   ├── telemetry/              # OpenTelemetry setup
-│   └── limiter/                # Rate limiting
-├── TestFiles/                  # Test data files
-├── go.mod                      # Go module file
-├── Makefile                    # Build automation
-├── Dockerfile                  # Docker configuration
-└── README.md                   # This file
-```
 
-## Development
 
 ### Available Make Commands
 
@@ -331,6 +302,7 @@ The service exposes comprehensive HTTP metrics via Prometheus:
 - **Request Count**: Total number of requests by method/path/status
 - **Error Rate**: Count of error responses (4xx, 5xx)
 - **Active Requests**: Currently in-flight requests
+- **Rate limited Requests**: Number of rate limited requests
 
 ### Logging
 
@@ -344,92 +316,6 @@ The service uses structured logging with Zap:
 - **Liveness**: Service is running
 - **Readiness**: Service is ready to handle requests
 
-## Error Handling
 
-The factory provides descriptive errors for:
-- Invalid JSON configuration
-- Missing required fields
-- Unsupported database types
-- File not found errors
-- Rate limit exceeded
 
-## Architecture
 
-The application follows a clean, modular architecture:
-
-### **Separation of Concerns**
-- **`cmd/main.go`**: Minimal entry point, only handles initialization
-- **`internal/app`**: Main application logic and lifecycle management
-- **`internal/config`**: Centralized configuration management
-- **`internal/logger`**: Logger initialization and configuration
-- **`internal/telemetry`**: OpenTelemetry setup and metrics
-- **`internal/router`**: HTTP routing and middleware
-- **`internal/finder`**: Business logic for IP geolocation
-- **`internal/lookup`**: Database provider abstractions
-
-### **Benefits**
-- **Testability**: Each component can be tested in isolation
-- **Maintainability**: Clear separation of responsibilities
-- **Flexibility**: Easy to modify or replace individual components
-- **Dependency Injection**: Clean dependency management
-- **Error Handling**: Centralized error handling and logging
-
-## Type Safety
-
-The application validates database types at runtime:
-- Only supported types are accepted
-- Prevents configuration typos
-- Ensures only valid configurations are processed
-
-## GitHub Actions and Docker Hub Integration
-
-### Setting up Docker Hub Credentials in GitHub
-
-To enable automatic Docker image publishing via GitHub Actions, you need to add your Docker Hub credentials as GitHub secrets:
-
-1. **Create a Docker Hub Access Token**
-   - Go to [Docker Hub](https://hub.docker.com/settings/security)
-   - Click "New Access Token"
-   - Give it a name (e.g., "GitHub Actions")
-   - Copy the generated token
-
-2. **Add Secrets to GitHub Repository**
-   - Go to your GitHub repository
-   - Navigate to Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Add these secrets:
-     - `DOCKERHUB_USERNAME`: Your Docker Hub username
-     - `DOCKERHUB_TOKEN`: The access token you created
-
-3. **Automatic Publishing**
-   - The workflow will automatically build and push Docker images on:
-     - Push to main/master branch
-     - Tagged releases (v*)
-   - Images will be tagged with:
-     - Branch name (e.g., `main`)
-     - Git SHA
-     - Version tags (e.g., `v1.0.0`)
-
-### Manual Docker Hub Publishing
-
-For manual publishing without GitHub Actions:
-
-```bash
-# Login to Docker Hub
-docker login
-
-# Build and push
-make docker-build-push DOCKER_USERNAME=your-username
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License.

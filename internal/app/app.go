@@ -44,12 +44,10 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 
 	ipFinder := finder.NewIpFinder(dbProvider)
 
-	// Initialize router
+	// Initialize router and create server
 	rateLimiter := limiter.NewRateLimiter(cfg.RPSLimit, logger)
-	appRouter := router.NewRouter(rateLimiter, logger)
-	appRouter.SetupRoutes(ipFinder)
-	handler := appRouter.SetupMiddleware(tel.GetHTTPMetrics())
-	server := appRouter.CreateServer(":"+cfg.Port, handler)
+	appRouter := router.NewRouter(rateLimiter, tel, logger)
+	server := appRouter.CreateServer(":"+cfg.Port, ipFinder)
 
 	return &App{
 		config:    cfg,

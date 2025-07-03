@@ -1,4 +1,4 @@
-package telemetry
+package router
 
 import (
 	"go.opentelemetry.io/otel/metric"
@@ -6,11 +6,12 @@ import (
 )
 
 type HTTPMetrics struct {
-	RequestDuration metric.Float64Histogram
-	RequestCount    metric.Int64Counter
-	ErrorRequests   metric.Int64Counter
-	ResponseStatus  metric.Int64Counter
-	ActiveRequests  metric.Int64UpDownCounter
+	RequestDuration     metric.Float64Histogram
+	RequestCount        metric.Int64Counter
+	ErrorRequests       metric.Int64Counter
+	ResponseStatus      metric.Int64Counter
+	ActiveRequests      metric.Int64UpDownCounter
+	RateLimitedRequests metric.Int64Counter
 }
 
 func NewHTTPMetrics(meter metric.Meter, logger *zap.Logger) *HTTPMetrics {
@@ -59,11 +60,21 @@ func NewHTTPMetrics(meter metric.Meter, logger *zap.Logger) *HTTPMetrics {
 		logger.Error("failed to create active requests metric", zap.Error(err))
 	}
 
+	rateLimitedRequests, err := meter.Int64Counter(
+		"http_rate_limited_requests_total",
+		metric.WithDescription("Total number of HTTP requests that were rate limited"),
+		metric.WithUnit("1"),
+	)
+	if err != nil {
+		logger.Error("failed to create rate limited requests metric", zap.Error(err))
+	}
+
 	return &HTTPMetrics{
-		RequestDuration: requestDuration,
-		RequestCount:    requestCount,
-		ErrorRequests:   errorRequests,
-		ResponseStatus:  responseStatus,
-		ActiveRequests:  activeRequests,
+		RequestDuration:     requestDuration,
+		RequestCount:        requestCount,
+		ErrorRequests:       errorRequests,
+		ResponseStatus:      responseStatus,
+		ActiveRequests:      activeRequests,
+		RateLimitedRequests: rateLimitedRequests,
 	}
 }

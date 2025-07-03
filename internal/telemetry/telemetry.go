@@ -3,14 +3,15 @@ package telemetry
 import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/metric"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.uber.org/zap"
 )
 
 // Telemetry handles OpenTelemetry initialization and metrics
 type Telemetry struct {
-	HTTPMetrics *HTTPMetrics
-	logger      *zap.Logger
+	Meter  metric.Meter
+	logger *zap.Logger
 }
 
 // New initializes OpenTelemetry with Prometheus exporter
@@ -24,8 +25,8 @@ func NewTelemetry(logger *zap.Logger) (*Telemetry, error) {
 	}
 
 	// Create meter provider
-	provider := metric.NewMeterProvider(
-		metric.WithReader(exporter),
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(exporter),
 	)
 	otel.SetMeterProvider(provider)
 
@@ -33,15 +34,9 @@ func NewTelemetry(logger *zap.Logger) (*Telemetry, error) {
 
 	// Initialize HTTP metrics
 	meter := otel.GetMeterProvider().Meter("torq")
-	httpMetrics := NewHTTPMetrics(meter, logger.Named("metrics"))
 
 	return &Telemetry{
-		HTTPMetrics: httpMetrics,
-		logger:      logger,
+		Meter:  meter,
+		logger: logger,
 	}, nil
-}
-
-// GetHTTPMetrics returns the HTTP metrics instance
-func (t *Telemetry) GetHTTPMetrics() *HTTPMetrics {
-	return t.HTTPMetrics
 }

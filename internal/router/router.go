@@ -19,60 +19,92 @@ import (
 
 // Router handles all routing logic and middleware setup
 type Router struct {
-	router      *mux.Router
-	rateLimiter limiter.RateLimiter
-	logger      *zap.Logger
+	router        *mux.Router
+	rateLimiter   limiter.RateLimiter
+	logger        *zap.Logger
+	routerMetrics *HTTPMetrics
 }
 
-// NewRouter creates a new router instance with all routes and middleware configured
-func NewRouter(rateLimiter limiter.RateLimiter, logger *zap.Logger) *Router {
+// NewRouter creates a new router instance
+func NewRouter(rateLimiter limiter.RateLimiter, telemetry *telemetry.Telemetry, logger *zap.Logger) *Router {
+	httpMetrics := NewHTTPMetrics(telemetry.Meter, logger.Named("metrics"))
+
 	r := &Router{
-		router:      mux.NewRouter(),
-		rateLimiter: rateLimiter,
-		logger:      logger.Named("router"),
+		router:        mux.NewRouter(),
+		rateLimiter:   rateLimiter,
+		logger:        logger.Named("router"),
+		routerMetrics: httpMetrics,
 	}
 	return r
 }
 
-// SetupRoutes configures all application routes
-func (r *Router) SetupRoutes(countryFinder *finder.IpFinder) {
-	r.logger.Info("setting up application routes")
+// CreateServer creates and configures a complete HTTP server with all routes and middleware
+func (router *Router) CreateServer(port string, ipFinder *finder.IpFinder) *http.Server {
+	router.logger.Info("creating HTTP server", zap.String("port", port))
 
-	// Health check endpoints
-	r.router.HandleFunc("/health/live", service_health.LivenessHandler(r.logger)).Methods("GET", "HEAD")
-	r.router.HandleFunc("/health/ready", service_health.ReadinessHandler(r.logger)).Methods("GET", "HEAD")
+	// Setup routes
+	router.setupRoutes(ipFinder)
 
-	// Metrics endpoint
-	r.router.Handle("/metrics", promhttp.Handler()).Methods("GET")
+	// Setup middleware
+	handler := router.setupMiddleware()
 
-	// API endpoints
-	r.router.HandleFunc("/v1/find-country", countryFinder.FindIpHandler).Methods("GET")
+	// Create server
+	srv := &http.Server{
+		Addr:         port,
+		Handler:      handler,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
 
-	r.logger.Info("routes configured successfully")
+	router.logger.Info("server configuration",
+		zap.String("addr", srv.Addr),
+		zap.Duration("read_timeout", srv.ReadTimeout),
+		zap.Duration("write_timeout", srv.WriteTimeout),
+		zap.Duration("idle_timeout", srv.IdleTimeout))
+
+	return srv
 }
 
-// SetupMiddleware configures rate limiting and metrics middleware
-func (r *Router) SetupMiddleware(metrics *telemetry.HTTPMetrics) http.Handler {
-	r.logger.Info("setting up middleware")
+// setupRoutes configures all application routes (private method)
+func (router *Router) setupRoutes(ipFinder *finder.IpFinder) {
+	router.logger.Info("setting up application routes")
+
+	// Health check endpoints
+	router.router.HandleFunc("/health/live", service_health.LivenessHandler(router.logger)).Methods("GET", "HEAD")
+	router.router.HandleFunc("/health/ready", service_health.ReadinessHandler(router.logger)).Methods("GET", "HEAD")
+
+	// Metrics endpoint
+	router.router.Handle("/metrics", promhttp.Handler()).Methods("GET")
+
+	// API endpoints
+	router.router.HandleFunc("/v1/find-country", ipFinder.FindIpHandler).Methods("GET")
+
+	router.logger.Info("routes configured successfully")
+}
+
+// setupMiddleware configures rate limiting and metrics middleware (private method)
+func (router *Router) setupMiddleware() http.Handler {
+	router.logger.Info("setting up middleware")
 
 	// Apply middlewares in order: metrics -> rate limiting -> router
-	metricsHandler := metricsMiddleware(metrics, r.logger.Named("metrics"))(r.router)
-	rateLimitedRouter := r.rateLimitMiddleware(metricsHandler)
+	metricsHandler := router.metricsMiddleware(router.logger.Named("metrics"))(router.router)
+	rateLimitedRouter := router.rateLimitMiddleware(metricsHandler)
 
-	r.logger.Info("middleware configured successfully")
+	router.logger.Info("middleware configured successfully")
 	return rateLimitedRouter
 }
 
 // MetricsMiddleware creates middleware for comprehensive HTTP metrics
-func metricsMiddleware(metrics *telemetry.HTTPMetrics, logger *zap.Logger) func(http.Handler) http.Handler {
+func (router *Router) metricsMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
 			// Increment active requests
-			if metrics.ActiveRequests != nil {
-				metrics.ActiveRequests.Add(r.Context(), 1)
-				defer metrics.ActiveRequests.Add(r.Context(), -1)
+			if router.routerMetrics.ActiveRequests != nil {
+				router.routerMetrics.ActiveRequests.Add(r.Context(), 1)
+				defer router.routerMetrics.ActiveRequests.Add(r.Context(), -1)
 			}
 
 			// Create response writer wrapper to capture status code
@@ -91,31 +123,31 @@ func metricsMiddleware(metrics *telemetry.HTTPMetrics, logger *zap.Logger) func(
 			}
 
 			// Record request duration
-			if metrics.RequestDuration != nil {
-				metrics.RequestDuration.Record(r.Context(), duration.Seconds(), metric.WithAttributes(attrs...))
+			if router.routerMetrics.RequestDuration != nil {
+				router.routerMetrics.RequestDuration.Record(r.Context(), duration.Seconds(), metric.WithAttributes(attrs...))
 			}
 
 			// Record request count
-			if metrics.RequestCount != nil {
-				metrics.RequestCount.Add(r.Context(), 1, metric.WithAttributes(attrs...))
+			if router.routerMetrics.RequestCount != nil {
+				router.routerMetrics.RequestCount.Add(r.Context(), 1, metric.WithAttributes(attrs...))
 			}
 
 			// Record error requests (4xx, 5xx status codes)
-			if metrics.ErrorRequests != nil && (wrappedWriter.statusCode >= 400) {
+			if router.routerMetrics.ErrorRequests != nil && (wrappedWriter.statusCode >= 400) {
 				errorAttrs := []attribute.KeyValue{
 					attribute.String("method", r.Method),
 					attribute.String("path", r.URL.Path),
 					attribute.String("status_code", strconv.Itoa(wrappedWriter.statusCode)),
 				}
-				metrics.ErrorRequests.Add(r.Context(), 1, metric.WithAttributes(errorAttrs...))
+				router.routerMetrics.ErrorRequests.Add(r.Context(), 1, metric.WithAttributes(errorAttrs...))
 			}
 
 			// Record response status
-			if metrics.ResponseStatus != nil {
+			if router.routerMetrics.ResponseStatus != nil {
 				statusAttrs := []attribute.KeyValue{
 					attribute.String("status_code", strconv.Itoa(wrappedWriter.statusCode)),
 				}
-				metrics.ResponseStatus.Add(r.Context(), 1, metric.WithAttributes(statusAttrs...))
+				router.routerMetrics.ResponseStatus.Add(r.Context(), 1, metric.WithAttributes(statusAttrs...))
 			}
 
 			logger.Info("request completed",
@@ -132,30 +164,12 @@ func metricsMiddleware(metrics *telemetry.HTTPMetrics, logger *zap.Logger) func(
 func (router *Router) rateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !router.rateLimiter.Allow() {
+			if router.routerMetrics != nil && router.routerMetrics.RateLimitedRequests != nil {
+				router.routerMetrics.RateLimitedRequests.Add(r.Context(), 1)
+			}
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// CreateServer creates and configures an HTTP server with the router
-func (r *Router) CreateServer(port string, handler http.Handler) *http.Server {
-	r.logger.Info("creating HTTP server", zap.String("port", port))
-
-	srv := &http.Server{
-		Addr:         port,
-		Handler:      handler,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	r.logger.Info("server configuration",
-		zap.String("addr", srv.Addr),
-		zap.Duration("read_timeout", srv.ReadTimeout),
-		zap.Duration("write_timeout", srv.WriteTimeout),
-		zap.Duration("idle_timeout", srv.IdleTimeout))
-
-	return srv
 }

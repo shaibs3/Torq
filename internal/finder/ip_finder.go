@@ -46,15 +46,15 @@ func (ipF *IpFinder) FindIpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	country, city, err := ipF.provider.Lookup(ip)
+	city, country, err := ipF.provider.Lookup(ip)
 	if err != nil {
 		http.Error(w, `{"error":"IP not found"}`, http.StatusNotFound)
 		return
 	}
 
 	resp := map[string]string{
-		"country": country,
 		"city":    city,
+		"country": country,
 		"ip":      ip,
 	}
 	jsonResp, _ := json.Marshal(resp)

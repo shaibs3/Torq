@@ -3,6 +3,7 @@ package lookup
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestGetDbProvider_CSV(t *testing.T) {
 		}
 	}`
 
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 	provider, err := factory.CreateProvider(configJSON)
 	require.NoError(t, err)
 	assert.NotNil(t, provider)
@@ -64,7 +65,7 @@ func TestGetDbProvider_InvalidDbType(t *testing.T) {
 		"extra_details": {}
 	}`
 
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
@@ -80,7 +81,7 @@ func TestGetDbProvider_MissingRequiredField(t *testing.T) {
 		"extra_details": {}
 	}`
 
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
@@ -93,7 +94,7 @@ func TestGetDbProvider_InvalidJSON(t *testing.T) {
 	// Test invalid JSON
 	configJSON := `{ invalid json }`
 
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
@@ -102,7 +103,7 @@ func TestGetDbProvider_InvalidJSON(t *testing.T) {
 
 func TestNewFactory(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, logger.Named("factory"), factory.logger)
@@ -110,9 +111,32 @@ func TestNewFactory(t *testing.T) {
 
 func TestFactory_CreateProvider_CSV(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 
-	configJSON := `{"dbtype": "csv", "extra_details": {"file_path": "TestFiles/ip_data.csv"}}`
+	// Find the project root by looking for go.mod file
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	// Walk up the directory tree to find go.mod
+	for {
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			break
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			t.Fatal("could not find go.mod file")
+		}
+		wd = parent
+	}
+
+	testFilePath := filepath.Join(wd, "TestFiles", "ip_data.csv")
+
+	// Verify the file actually exists
+	if _, err := os.Stat(testFilePath); err != nil {
+		t.Fatalf("test file not found at %s: %v", testFilePath, err)
+	}
+
+	configJSON := fmt.Sprintf(`{"dbtype": "csv", "extra_details": {"file_path": "%s"}}`, testFilePath)
 
 	provider, err := factory.CreateProvider(configJSON)
 	require.NoError(t, err)
@@ -121,13 +145,13 @@ func TestFactory_CreateProvider_CSV(t *testing.T) {
 	// Test that it's actually a CSV provider by doing a lookup
 	city, country, err := provider.Lookup("90.91.92.93")
 	require.NoError(t, err)
-	assert.Equal(t, "Paris", city)
+	assert.Equal(t, "Bordeaux", city)
 	assert.Equal(t, "France", country)
 }
 
 func TestFactory_CreateProvider_InvalidJSON(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 
 	configJSON := `{ invalid json }`
 
@@ -139,7 +163,7 @@ func TestFactory_CreateProvider_InvalidJSON(t *testing.T) {
 
 func TestFactory_CreateProvider_InvalidDbType(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 
 	configJSON := `{"dbtype": "invalid", "extra_details": {}}`
 
@@ -151,7 +175,7 @@ func TestFactory_CreateProvider_InvalidDbType(t *testing.T) {
 
 func TestFactory_CreateProvider_MissingRequiredField(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewFactory(logger)
+	factory := NewDbProviderFactory(logger)
 
 	configJSON := `{"dbtype": "csv", "extra_details": {}}`
 
