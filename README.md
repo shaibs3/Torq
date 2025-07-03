@@ -7,6 +7,7 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 - 🌍 IP to country geolocation
 - 🔌 Pluggable backend providers with JSON configuration
 - 📊 OpenTelemetry metrics and tracing
+- 🚦 Rate limiting with configurable RPS (Requests Per Second)
 - 🐳 Docker support
 - 🧪 Comprehensive testing
 - 📈 Prometheus metrics endpoint
