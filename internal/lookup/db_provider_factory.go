@@ -13,18 +13,18 @@ type ProviderFactory interface {
 }
 
 // Factory implements ProviderFactory for creating database providers
-type Factory struct {
+type DbProviderFactory struct {
 	logger *zap.Logger
 }
 
 // NewFactory creates a new factory instance
-func NewFactory(logger *zap.Logger) *Factory {
-	return &Factory{
+func NewDbProviderFactory(logger *zap.Logger) *DbProviderFactory {
+	return &DbProviderFactory{
 		logger: logger.Named("factory"),
 	}
 }
 
-func (f *Factory) CreateProvider(configJSON string) (DbProvider, error) {
+func (f *DbProviderFactory) CreateProvider(configJSON string) (DbProvider, error) {
 	var config DbProviderConfig
 	f.logger.Info("parsing configuration", zap.String("configJSON", configJSON))
 

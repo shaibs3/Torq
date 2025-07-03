@@ -35,8 +35,8 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 
 	// Initialize IP DB provider
-	factory := lookup.NewFactory(logger.Named("db_provider"))
-	dbProvider, err := factory.CreateProvider(cfg.IPDBConfig)
+	dbProviderFactory := lookup.NewDbProviderFactory(logger.Named("db_provider"))
+	dbProvider, err := dbProviderFactory.CreateProvider(cfg.IPDBConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -45,10 +45,9 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	ipFinder := finder.NewIpFinder(dbProvider)
 
 	// Initialize router
-	appRouter := router.NewRouter(limiter.NewRateLimiter(cfg.RPSLimit, logger.Named("rate_limiter")), logger)
+	rateLimiter := limiter.NewRateLimiter(cfg.RPSLimit, logger)
+	appRouter := router.NewRouter(rateLimiter, logger)
 	appRouter.SetupRoutes(ipFinder)
-
-	// Setup middleware with metrics
 	handler := appRouter.SetupMiddleware(tel.GetHTTPMetrics())
 	server := appRouter.CreateServer(":"+cfg.Port, handler)
 

@@ -18,7 +18,7 @@ type RpsRateLimiter struct {
 }
 
 func NewRateLimiter(rps int, logger *zap.Logger) *RpsRateLimiter {
-	return NewRateLimiterWithTimeProvider(rps, logger, time.Now)
+	return NewRateLimiterWithTimeProvider(rps, logger.Named("rate_limiter"), time.Now)
 }
 
 func NewRateLimiterWithTimeProvider(rps int, logger *zap.Logger, tp TimeProvider) *RpsRateLimiter {
