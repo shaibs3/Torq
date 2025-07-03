@@ -35,9 +35,21 @@ A Go-based microservice that provides IP geolocation functionality through a RES
 
 3. **Set up database configuration**
    
-   **Option 1: JSON Configuration (Recommended)**
+   **Option 1: Environment Variable**
    ```bash
    export IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "./TestFiles/ip_data.csv"}}'
+   ```
+   
+   **Option 2: .env File**
+   ```bash
+   # Copy the example environment file
+   cp .env_example .env
+   
+   # Edit the .env file with your configuration
+   # The file should contain:
+   IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "./TestFiles/ip_data.csv"}}'
+   RPS_LIMIT=10
+   PORT=8080
    ```
 
 4. **Run the application**
