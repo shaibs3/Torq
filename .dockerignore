@@ -53,6 +53,6 @@ Makefile
 *.log
 
 # Environment files
-.env
+.env_example
 .env.local
 .env.*.local 
