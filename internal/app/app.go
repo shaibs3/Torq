@@ -35,7 +35,7 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 
 	// Initialize IP DB provider
-	dbProviderFactory := lookup.NewDbProviderFactory(logger.Named("db_provider"))
+	dbProviderFactory := lookup.NewDbProviderFactory(logger.Named("db_provider"), tel)
 	dbProvider, err := dbProviderFactory.CreateProvider(cfg.IPDBConfig)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package finder
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,7 +20,7 @@ type MockProvider struct {
 	}
 }
 
-func (m *MockProvider) Lookup(ip string) (string, string, error) {
+func (m *MockProvider) Lookup(ctx context.Context, ip string) (string, string, error) {
 	if rec, exists := m.data[ip]; exists {
 		return rec.city, rec.country, nil
 	}

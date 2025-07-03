@@ -1,5 +1,7 @@
 package lookup
 
+import "context"
+
 type DbProvider interface {
-	Lookup(ip string) (city string, country string, err error)
+	Lookup(ctx context.Context, ip string) (city string, country string, err error)
 }

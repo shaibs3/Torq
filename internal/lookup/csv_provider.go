@@ -1,11 +1,14 @@
 package lookup
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +23,10 @@ type record struct {
 	country string
 }
 
-func NewCSVProvider(config DbProviderConfig, logger *zap.Logger) (*CSVProvider, error) {
+func NewCSVProvider(config DbProviderConfig, logger *zap.Logger, meter metric.Meter) (*CSVProvider, error) {
+	if meter != nil {
+		InitLookupMetrics(meter)
+	}
 	// Create a named logger for the CSV provider
 	csvLogger := logger.Named("csv")
 
@@ -74,7 +80,8 @@ func NewCSVProvider(config DbProviderConfig, logger *zap.Logger) (*CSVProvider, 
 	}, nil
 }
 
-func (p *CSVProvider) Lookup(ip string) (string, string, error) {
+func (p *CSVProvider) Lookup(ctx context.Context, ip string) (string, string, error) {
+	start := time.Now()
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
@@ -82,9 +89,13 @@ func (p *CSVProvider) Lookup(ip string) (string, string, error) {
 
 	rec, ok := p.data[ip]
 	if !ok {
+		IncLookupErrors(context.Background())
+		RecordLookupDuration(ctx, time.Since(start).Seconds())
 		p.logger.Debug("IP not found in database", zap.String("ip", ip))
 		return "", "", fmt.Errorf("IP not found")
 	}
+
+	RecordLookupDuration(ctx, time.Since(start).Seconds())
 
 	p.logger.Debug("IP lookup successful",
 		zap.String("ip", ip),

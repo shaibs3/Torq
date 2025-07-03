@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/shaibs3/Torq/internal/telemetry"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 )
 
@@ -14,13 +16,15 @@ type ProviderFactory interface {
 
 // Factory implements ProviderFactory for creating database providers
 type DbProviderFactory struct {
-	logger *zap.Logger
+	logger    *zap.Logger
+	telemetry *telemetry.Telemetry
 }
 
-// NewFactory creates a new factory instance
-func NewDbProviderFactory(logger *zap.Logger) *DbProviderFactory {
+// NewDbProviderFactoryWithTelemetry creates a new factory instance with telemetry
+func NewDbProviderFactory(logger *zap.Logger, tel *telemetry.Telemetry) *DbProviderFactory {
 	return &DbProviderFactory{
-		logger: logger.Named("factory"),
+		logger:    logger.Named("factory"),
+		telemetry: tel,
 	}
 }
 
@@ -41,11 +45,18 @@ func (f *DbProviderFactory) CreateProvider(configJSON string) (DbProvider, error
 		return nil, fmt.Errorf("unsupported database type: %s", config.DbType)
 	}
 
+	var telemetryMeter metric.Meter
+
+	if f.telemetry != nil {
+		telemetryMeter = f.telemetry.Meter
+	} else {
+		telemetryMeter = nil
+	}
 	switch config.DbType {
 	case DbTypeCSV:
-		return NewCSVProvider(config, f.logger)
+		return NewCSVProvider(config, f.logger, telemetryMeter)
 	case DbTypePostgres:
-		return NewPostgresProvider(config, f.logger)
+		return NewPostgresProvider(config, f.logger, telemetryMeter)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", config.DbType)
 	}

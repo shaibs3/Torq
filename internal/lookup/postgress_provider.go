@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
+	"time"
 )
 
 type PostgresProvider struct {
@@ -13,7 +15,10 @@ type PostgresProvider struct {
 	logger *zap.Logger
 }
 
-func NewPostgresProvider(config DbProviderConfig, logger *zap.Logger) (*PostgresProvider, error) {
+func NewPostgresProvider(config DbProviderConfig, logger *zap.Logger, meter metric.Meter) (*PostgresProvider, error) {
+	if meter != nil {
+		InitLookupMetrics(meter)
+	}
 	pgLogger := logger.Named("postgres")
 
 	connStr, ok := config.ExtraDetails["conn_str"].(string)
@@ -40,16 +45,20 @@ func NewPostgresProvider(config DbProviderConfig, logger *zap.Logger) (*Postgres
 	}, nil
 }
 
-func (p *PostgresProvider) Lookup(ip string) (string, string, error) {
+func (p *PostgresProvider) Lookup(ctx context.Context, ip string) (string, string, error) {
+	start := time.Now()
 	p.logger.Debug("looking up IP", zap.String("ip", ip))
-
 	var city, country string
 	query := "SELECT city, country FROM ip_locations WHERE ip = $1"
-	err := p.db.QueryRowContext(context.Background(), query, ip).Scan(&city, &country)
+	err := p.db.QueryRowContext(ctx, query, ip).Scan(&city, &country)
 	if err != nil {
+		IncLookupErrors(ctx)
+		RecordLookupDuration(ctx, time.Since(start).Seconds())
 		p.logger.Error("IP not found in database", zap.String("ip", ip), zap.Error(err))
 		return "", "", fmt.Errorf("IP not found: %w", err)
 	}
+
+	RecordLookupDuration(ctx, time.Since(start).Seconds())
 
 	p.logger.Debug("IP lookup successful",
 		zap.String("ip", ip),

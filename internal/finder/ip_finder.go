@@ -1,6 +1,7 @@
 package finder
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -46,7 +47,7 @@ func (ipF *IpFinder) FindIpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	city, country, err := ipF.provider.Lookup(ip)
+	city, country, err := ipF.provider.Lookup(context.Background(), ip)
 	if err != nil {
 		http.Error(w, `{"error":"IP not found"}`, http.StatusNotFound)
 		return

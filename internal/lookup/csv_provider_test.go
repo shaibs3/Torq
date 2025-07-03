@@ -1,6 +1,7 @@
 package lookup
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -38,10 +39,10 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 		},
 	}
 
-	provider, err := NewCSVProvider(config, logger)
+	provider, err := NewCSVProvider(config, logger, nil)
 	require.NoError(t, err)
 
-	city, country, err := provider.Lookup("1.2.3.4")
+	city, country, err := provider.Lookup(context.Background(), "1.2.3.4")
 	require.NoError(t, err)
 	assert.Equal(t, "New York", city)
 	assert.Equal(t, "USA", country)
@@ -57,7 +58,7 @@ func TestNewCSVProvider_InvalidFile(t *testing.T) {
 		},
 	}
 
-	_, err := NewCSVProvider(config, logger)
+	_, err := NewCSVProvider(config, logger, nil)
 	assert.Error(t, err)
 }
 
@@ -75,9 +76,9 @@ func TestCSVProvider_Lookup_NotFound(t *testing.T) {
 		},
 	}
 
-	provider, err := NewCSVProvider(config, logger)
+	provider, err := NewCSVProvider(config, logger, nil)
 	require.NoError(t, err)
 
-	_, _, err = provider.Lookup("8.8.8.8")
+	_, _, err = provider.Lookup(context.Background(), "8.8.8.8")
 	assert.Error(t, err)
 }

@@ -1,6 +1,7 @@
 package lookup
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,13 +45,13 @@ func TestGetDbProvider_CSV(t *testing.T) {
 		}
 	}`
 
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 	provider, err := factory.CreateProvider(configJSON)
 	require.NoError(t, err)
 	assert.NotNil(t, provider)
 
 	// Test that the provider actually works
-	city, country, err := provider.Lookup("1.2.3.4")
+	city, country, err := provider.Lookup(context.Background(), "1.2.3.4")
 	require.NoError(t, err)
 	assert.Equal(t, "New York", city)
 	assert.Equal(t, "USA", country)
@@ -65,7 +66,7 @@ func TestGetDbProvider_InvalidDbType(t *testing.T) {
 		"extra_details": {}
 	}`
 
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
@@ -81,7 +82,7 @@ func TestGetDbProvider_MissingRequiredField(t *testing.T) {
 		"extra_details": {}
 	}`
 
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
@@ -94,7 +95,7 @@ func TestGetDbProvider_InvalidJSON(t *testing.T) {
 	// Test invalid JSON
 	configJSON := `{ invalid json }`
 
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 	provider, err := factory.CreateProvider(configJSON)
 	assert.Error(t, err)
 	assert.Nil(t, provider)
@@ -103,7 +104,7 @@ func TestGetDbProvider_InvalidJSON(t *testing.T) {
 
 func TestNewFactory(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, logger.Named("factory"), factory.logger)
@@ -111,7 +112,7 @@ func TestNewFactory(t *testing.T) {
 
 func TestFactory_CreateProvider_CSV(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 
 	// Find the project root by looking for go.mod file
 	wd, err := os.Getwd()
@@ -143,7 +144,7 @@ func TestFactory_CreateProvider_CSV(t *testing.T) {
 	assert.NotNil(t, provider)
 
 	// Test that it's actually a CSV provider by doing a lookup
-	city, country, err := provider.Lookup("90.91.92.93")
+	city, country, err := provider.Lookup(context.Background(), "90.91.92.93")
 	require.NoError(t, err)
 	assert.Equal(t, "Bordeaux", city)
 	assert.Equal(t, "France", country)
@@ -151,7 +152,7 @@ func TestFactory_CreateProvider_CSV(t *testing.T) {
 
 func TestFactory_CreateProvider_InvalidJSON(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 
 	configJSON := `{ invalid json }`
 
@@ -163,7 +164,7 @@ func TestFactory_CreateProvider_InvalidJSON(t *testing.T) {
 
 func TestFactory_CreateProvider_InvalidDbType(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 
 	configJSON := `{"dbtype": "invalid", "extra_details": {}}`
 
@@ -175,7 +176,7 @@ func TestFactory_CreateProvider_InvalidDbType(t *testing.T) {
 
 func TestFactory_CreateProvider_MissingRequiredField(t *testing.T) {
 	logger := zap.NewNop()
-	factory := NewDbProviderFactory(logger)
+	factory := NewDbProviderFactory(logger, nil)
 
 	configJSON := `{"dbtype": "csv", "extra_details": {}}`
 
@@ -214,6 +215,7 @@ func (m *MockFactory) SetProvider(configJSON string, provider DbProvider) {
 func TestMockFactory(t *testing.T) {
 	logger := zap.NewNop()
 	mockFactory := NewMockFactory(logger)
+	ctx := context.Background()
 
 	// Create a mock provider
 	mockProvider := &MockProvider{
@@ -230,7 +232,7 @@ func TestMockFactory(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, provider)
 
-	city, country, err := provider.Lookup("1.2.3.4")
+	city, country, err := provider.Lookup(ctx, "1.2.3.4")
 	require.NoError(t, err)
 	assert.Equal(t, "Test City", city)
 	assert.Equal(t, "Test Country", country)
@@ -241,7 +243,7 @@ type MockProvider struct {
 	data map[string]record
 }
 
-func (m *MockProvider) Lookup(ip string) (string, string, error) {
+func (m *MockProvider) Lookup(ctx context.Context, ip string) (string, string, error) {
 	if rec, exists := m.data[ip]; exists {
 		return rec.city, rec.country, nil
 	}
