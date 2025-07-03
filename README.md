@@ -27,13 +27,7 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    git clone https://github.com/shaibs3/Torq.git
    cd Torq
    ```
-
-2. **Install dependencies**
-   ```bash
-   go mod download
-   ```
-
-3. **Set up database configuration**
+2. **Set up database configuration**
    
    **Option 1: Environment Variable**
    
@@ -64,7 +58,7 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    PORT=8080
    ```
 
-4. **Run the application**
+3. **Run the application**
    ```bash
    # Using Go directly
    go run cmd/main.go
@@ -73,12 +67,12 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    make run
    ```
 
-5. **Test the API**
+4. **Test the API**
    ```bash
    curl "http://localhost:8080/v1/find-country?ip=90.91.92.93"
    ```
 
-6. **Check metrics**
+5. **Check metrics**
    ```bash
    curl "http://localhost:8080/metrics"
    ```
