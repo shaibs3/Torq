@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Port        string
 	RPSLimit    int
+	RPSBurst    int
 	IPDBConfig  string
 	Environment string
 	LogLevel    string
@@ -27,6 +28,7 @@ func Load(logger *zap.Logger) *Config {
 	config := &Config{
 		Port:        getEnv("PORT", "8080"),
 		RPSLimit:    getEnvAsInt("RPS_LIMIT", 10),
+		RPSBurst:    getEnvAsInt("RPS_BURST", 10),
 		IPDBConfig:  os.Getenv("IP_DB_CONFIG"),
 		Environment: getEnv("ENVIRONMENT", "production"),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
@@ -35,6 +37,7 @@ func Load(logger *zap.Logger) *Config {
 	logger.Info("configuration loaded",
 		zap.String("port", config.Port),
 		zap.Int("rps_limit", config.RPSLimit),
+		zap.Int("rps_burst", config.RPSBurst),
 		zap.String("environment", config.Environment),
 		zap.String("log_level", config.LogLevel),
 	)

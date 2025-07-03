@@ -49,6 +49,7 @@ A Go-based microservice that provides IP geolocation functionality through a RES
    # The file should contain:
    IP_DB_CONFIG='{"dbtype": "csv", "extra_details": {"file_path": "./TestFiles/ip_data.csv"}}'
    RPS_LIMIT=10
+   RPS_BURST=10
    PORT=8080
    ```
 
@@ -212,13 +213,14 @@ IP,CITY,COUNTRY
 
 ### Environment Variables
 
-| Variable | Description                              | Default      |
-|----------|------------------------------------------|--------------|
-| `IP_DB_CONFIG` | JSON configuration for database provider | -            |
-| `PORT` | Server port                              | `8080`       |
-| `RPS_LIMIT` | Rate limit (requests per second)         | `10`         |
-| `LOG_LEVEL` | Log level                                | `info`       |
-| `ENVIRONMENT` | ENVIRONMENT                             | `production` |
+| Variable       | Description                                 | Default      |
+|----------------|---------------------------------------------|--------------|
+| `IP_DB_CONFIG` | JSON configuration for database provider    | -            |
+| `PORT`         | Server port                                 | `8080`       |
+| `RPS_LIMIT`    | Rate limit (requests per second)            | `10`         |
+| `RPS_BURST`    | Number of burst requests allowed per second | `10`         |
+| `LOG_LEVEL`    | Log level                                   | `info`       |
+| `ENVIRONMENT`  | ENVIRONMENT                                 | `production` |
 
 
 

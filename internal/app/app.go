@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/shaibs3/Torq/internal/router"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,7 +15,6 @@ import (
 	"github.com/shaibs3/Torq/internal/config"
 	"github.com/shaibs3/Torq/internal/finder"
 	"github.com/shaibs3/Torq/internal/lookup"
-	"github.com/shaibs3/Torq/internal/router"
 	"github.com/shaibs3/Torq/internal/telemetry"
 	"go.uber.org/zap"
 )
@@ -42,14 +42,11 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 	logger.Info("database provider initialized")
 
-	ipFinder := finder.NewIpFinder(dbProvider)
-
 	// Initialize router
-	rateLimiter := limiter.NewRateLimiter(cfg.RPSLimit, logger)
-	appRouter := router.NewRouter(rateLimiter, logger)
-	appRouter.SetupRoutes(ipFinder)
-	handler := appRouter.SetupMiddleware(tel.GetHTTPMetrics())
-	server := appRouter.CreateServer(":"+cfg.Port, handler)
+	rateLimiter := limiter.NewBurstRateLimiter(cfg.RPSLimit, cfg.RPSBurst, logger)
+	ipFinder := finder.NewIpFinder(dbProvider)
+	appRouter := router.NewRouter(rateLimiter, tel, logger)
+	server := appRouter.CreateServer(":"+cfg.Port, ipFinder)
 
 	return &App{
 		config:    cfg,
