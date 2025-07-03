@@ -2,6 +2,9 @@
 FROM golang:1.24.2-alpine AS builder
 
 ARG PORT=8080
+ARG VERSION=dev
+ARG COMMIT=none
+ARG DATE=unknown
 
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -12,7 +15,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags "-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o main ./cmd/main.go
 
 # Final stage
 FROM alpine:latest

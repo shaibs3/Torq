@@ -7,6 +7,11 @@ DOCKER_USERNAME?=your-dockerhub-username
 DOCKER_REPO=$(DOCKER_USERNAME)/$(DOCKER_IMAGE)
 PORT=8080
 
+# Build info variables
+VERSION ?= $(shell git describe --tags --always --dirty)
+COMMIT  ?= $(shell git rev-parse --short HEAD)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
 # Go related variables
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -28,7 +33,7 @@ all: clean deps test build
 build:
 	@echo "Building..."
 	@mkdir -p $(BINARY_DIR)
-	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
+	$(GOBUILD) -ldflags "-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(DATE)'" -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
 
 ## Clean build artifacts
 clean:
@@ -40,7 +45,7 @@ clean:
 ## Run the application
 run:
 	@echo "Running..."
-	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
+	$(GOBUILD) -ldflags "-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(DATE)'" -o $(BINARY_DIR)/$(BINARY_NAME) -v ./cmd/main.go
 	./$(BINARY_DIR)/$(BINARY_NAME)
 
 ## Test the application

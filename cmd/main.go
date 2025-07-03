@@ -9,6 +9,12 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	// Initialize logger first (for configuration loading)
 	initialLogger, err := logger.NewLogger("production", "info")
@@ -30,6 +36,13 @@ func main() {
 	defer func() {
 		_ = appLogger.Sync()
 	}()
+
+	// Log build info
+	appLogger.Info("Build info",
+		zap.String("version", version),
+		zap.String("commit", commit),
+		zap.String("date", date),
+	)
 
 	application, err := app.NewApp(cfg, appLogger)
 	if err != nil {
