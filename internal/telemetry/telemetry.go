@@ -14,7 +14,7 @@ type Telemetry struct {
 }
 
 // New initializes OpenTelemetry with Prometheus exporter
-func New(logger *zap.Logger) (*Telemetry, error) {
+func NewTelemetry(logger *zap.Logger) (*Telemetry, error) {
 	logger = logger.Named("telemetry")
 
 	// Initialize Prometheus exporter

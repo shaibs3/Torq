@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,10 +27,9 @@ type App struct {
 	server    *http.Server
 }
 
-// New creates a new application instance
 func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	// Initialize telemetry
-	tel, err := telemetry.New(logger)
+	tel, err := telemetry.NewTelemetry(logger)
 	if err != nil {
 		return nil, err
 	}
@@ -61,13 +61,12 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 }
 
 // Start starts the application server
-func (a *App) start() error {
-	a.logger.Info("starting server", zap.String("port", a.config.Port))
+func (app *App) start() error {
+	app.logger.Info("starting server", zap.String("port", app.config.Port))
 
-	// Start server in a goroutine
 	go func() {
-		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			a.logger.Fatal("server failed to start", zap.Error(err))
+		if err := app.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			app.logger.Fatal("server failed to start", zap.Error(err))
 		}
 	}()
 
@@ -75,26 +74,26 @@ func (a *App) start() error {
 }
 
 // Stop gracefully shuts down the application
-func (a *App) stop() error {
-	a.logger.Info("shutting down server...")
+func (app *App) stop() error {
+	app.logger.Info("shutting down server...")
 
 	// Create shutdown context with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := a.server.Shutdown(shutdownCtx); err != nil {
-		a.logger.Error("server forced to shutdown", zap.Error(err))
+	if err := app.server.Shutdown(shutdownCtx); err != nil {
+		app.logger.Error("server forced to shutdown", zap.Error(err))
 		return err
 	}
 
-	a.logger.Info("server exited gracefully")
+	app.logger.Info("server exited gracefully")
 	return nil
 }
 
 // Run starts the application and waits for shutdown signals
-func (a *App) Run() error {
+func (app *App) Run() error {
 	// Start the server
-	if err := a.start(); err != nil {
+	if err := app.start(); err != nil {
 		return err
 	}
 
@@ -106,5 +105,5 @@ func (a *App) Run() error {
 	<-ctx.Done()
 
 	// Stop the application
-	return a.stop()
+	return app.stop()
 }

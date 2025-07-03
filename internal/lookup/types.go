@@ -26,7 +26,7 @@ func (dt DbType) IsValid() bool {
 }
 
 // DbConfig represents the configuration for a database provider
-type DbConfig struct {
+type DbProviderConfig struct {
 	DbType       DbType                 `json:"dbtype"`
 	ExtraDetails map[string]interface{} `json:"extra_details"`
 }

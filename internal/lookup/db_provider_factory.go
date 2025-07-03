@@ -25,7 +25,7 @@ func NewFactory(logger *zap.Logger) *Factory {
 }
 
 func (f *Factory) CreateProvider(configJSON string) (DbProvider, error) {
-	var config DbConfig
+	var config DbProviderConfig
 	f.logger.Info("parsing configuration", zap.String("configJSON", configJSON))
 
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {

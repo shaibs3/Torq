@@ -5,7 +5,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// New creates a new logger instance based on environment
 func NewLogger(environment, logLevel string) (*zap.Logger, error) {
 	var config zap.Config
 

@@ -31,7 +31,7 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 		}
 	}(path)
 
-	config := DbConfig{
+	config := DbProviderConfig{
 		DbType: DbTypeCSV,
 		ExtraDetails: map[string]interface{}{
 			"file_path": path,
@@ -50,7 +50,7 @@ func TestNewCSVProvider_ValidFile(t *testing.T) {
 func TestNewCSVProvider_InvalidFile(t *testing.T) {
 	logger := zap.NewNop() // Use no-op logger for tests
 
-	config := DbConfig{
+	config := DbProviderConfig{
 		DbType: DbTypeCSV,
 		ExtraDetails: map[string]interface{}{
 			"file_path": "nonexistent.csv",
@@ -68,7 +68,7 @@ func TestCSVProvider_Lookup_NotFound(t *testing.T) {
 	path := createTempCSV(t, csvContent)
 	defer os.Remove(path) //nolint:errcheck
 
-	config := DbConfig{
+	config := DbProviderConfig{
 		DbType: DbTypeCSV,
 		ExtraDetails: map[string]interface{}{
 			"file_path": path,

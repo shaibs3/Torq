@@ -20,7 +20,7 @@ type record struct {
 	country string
 }
 
-func NewCSVProvider(config DbConfig, logger *zap.Logger) (*CSVProvider, error) {
+func NewCSVProvider(config DbProviderConfig, logger *zap.Logger) (*CSVProvider, error) {
 	// Create a named logger for the CSV provider
 	csvLogger := logger.Named("csv")
 
