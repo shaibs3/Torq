@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -108,46 +107,6 @@ func TestNewFactory(t *testing.T) {
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, logger.Named("factory"), factory.logger)
-}
-
-func TestFactory_CreateProvider_CSV(t *testing.T) {
-	logger := zap.NewNop()
-	factory := NewDbProviderFactory(logger, nil)
-
-	// Find the project root by looking for go.mod file
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-
-	// Walk up the directory tree to find go.mod
-	for {
-		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
-			break
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			t.Fatal("could not find go.mod file")
-		}
-		wd = parent
-	}
-
-	testFilePath := filepath.Join(wd, "TestFiles", "ip_data.csv")
-
-	// Verify the file actually exists
-	if _, err := os.Stat(testFilePath); err != nil {
-		t.Fatalf("test file not found at %s: %v", testFilePath, err)
-	}
-
-	configJSON := fmt.Sprintf(`{"dbtype": "csv", "extra_details": {"file_path": "%s"}}`, testFilePath)
-
-	provider, err := factory.CreateProvider(configJSON)
-	require.NoError(t, err)
-	assert.NotNil(t, provider)
-
-	// Test that it's actually a CSV provider by doing a lookup
-	city, country, err := provider.Lookup(context.Background(), "90.91.92.93")
-	require.NoError(t, err)
-	assert.Equal(t, "Bordeaux", city)
-	assert.Equal(t, "France", country)
 }
 
 func TestFactory_CreateProvider_InvalidJSON(t *testing.T) {

@@ -20,7 +20,6 @@ type DbProviderFactory struct {
 	telemetry *telemetry.Telemetry
 }
 
-// NewDbProviderFactoryWithTelemetry creates a new factory instance with telemetry
 func NewDbProviderFactory(logger *zap.Logger, tel *telemetry.Telemetry) *DbProviderFactory {
 	return &DbProviderFactory{
 		logger:    logger.Named("factory"),

@@ -15,6 +15,7 @@ func ReadinessHandler(logger *zap.Logger) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 
 		// Check if the provider is properly initialized
+		// This is a placeholder check; replace with actual provider initialization logic
 		backend := os.Getenv("IP_DB_PROVIDER")
 		status := "ready"
 		if backend == "" {
