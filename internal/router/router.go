@@ -1,10 +1,11 @@
 package router
 
 import (
-	"github.com/shaibs3/Torq/internal/telemetry"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/shaibs3/Torq/internal/telemetry"
 
 	"github.com/shaibs3/Torq/internal/finder"
 	"github.com/shaibs3/Torq/internal/limiter"
@@ -163,6 +164,13 @@ func (router *Router) metricsMiddleware(logger *zap.Logger) func(http.Handler) h
 
 func (router *Router) rateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip rate limiting for health check and metrics endpoints
+		// in normal app i would have created diffrent http servers listening on different ports for app logic, metrics and health endpoints
+		if r.URL.Path == "/metrics" || r.URL.Path == "/health/live" || r.URL.Path == "/health/ready" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if !router.rateLimiter.Allow() {
 			if router.routerMetrics != nil && router.routerMetrics.RateLimitedRequests != nil {
 				router.routerMetrics.RateLimitedRequests.Add(r.Context(), 1)
