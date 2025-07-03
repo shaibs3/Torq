@@ -288,17 +288,7 @@ The service exposes comprehensive HTTP metrics via Prometheus:
 - **Active Requests**: Currently in-flight requests
 - **Rate limited Requests**: Number of rate limited requests
 
-### Logging
 
-The service uses structured logging with Zap:
-- JSON format for production
-- Request/response logging
-- Error tracking with context
-
-### Health Checks
-
-- **Liveness**: Service is running
-- **Readiness**: Service is ready to handle requests
 
 
 
