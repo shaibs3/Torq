@@ -45,7 +45,7 @@ func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	ipFinder := finder.NewIpFinder(dbProvider)
 
 	// Initialize router and create server
-	rateLimiter := limiter.NewRateLimiter(cfg.RPSLimit, logger)
+	rateLimiter := limiter.NewBurstRateLimiter(cfg.RPSLimit, 10, logger)
 	appRouter := router.NewRouter(rateLimiter, tel, logger)
 	server := appRouter.CreateServer(":"+cfg.Port, ipFinder)
 
