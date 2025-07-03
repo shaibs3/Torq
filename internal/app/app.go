@@ -27,7 +27,7 @@ type App struct {
 }
 
 // New creates a new application instance
-func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
+func NewApp(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	// Initialize telemetry
 	tel, err := telemetry.New(logger)
 	if err != nil {
@@ -42,7 +42,6 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 	logger.Info("database provider initialized")
 
-	// Initialize country finder
 	ipFinder := finder.NewIpFinder(dbProvider)
 
 	// Initialize router
@@ -51,10 +50,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 
 	// Setup middleware with metrics
 	handler := appRouter.SetupMiddleware(tel.GetHTTPMetrics())
-
-	// Create server
-	port := ":" + cfg.Port
-	server := appRouter.CreateServer(port, handler)
+	server := appRouter.CreateServer(":"+cfg.Port, handler)
 
 	return &App{
 		config:    cfg,
@@ -65,7 +61,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 }
 
 // Start starts the application server
-func (a *App) Start() error {
+func (a *App) start() error {
 	a.logger.Info("starting server", zap.String("port", a.config.Port))
 
 	// Start server in a goroutine
@@ -79,7 +75,7 @@ func (a *App) Start() error {
 }
 
 // Stop gracefully shuts down the application
-func (a *App) Stop() error {
+func (a *App) stop() error {
 	a.logger.Info("shutting down server...")
 
 	// Create shutdown context with timeout
@@ -98,7 +94,7 @@ func (a *App) Stop() error {
 // Run starts the application and waits for shutdown signals
 func (a *App) Run() error {
 	// Start the server
-	if err := a.Start(); err != nil {
+	if err := a.start(); err != nil {
 		return err
 	}
 
@@ -110,5 +106,5 @@ func (a *App) Run() error {
 	<-ctx.Done()
 
 	// Stop the application
-	return a.Stop()
+	return a.stop()
 }

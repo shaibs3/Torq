@@ -6,7 +6,7 @@ import (
 )
 
 // New creates a new logger instance based on environment
-func New(environment, logLevel string) (*zap.Logger, error) {
+func NewLogger(environment, logLevel string) (*zap.Logger, error) {
 	var config zap.Config
 
 	switch environment {
